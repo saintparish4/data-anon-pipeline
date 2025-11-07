@@ -198,43 +198,51 @@ class RiskAssessmentEngine:
         Returns:
             Tuple of (risk_level, risk_score, reasoning)
         """
-        # High risk: uniquely identifiable (k=1) or unique on 2+ QI combinations
-        # Check unique_count >= 2 first as it's more specific
+        # High risk: unique on 2+ QI combinations (check this first - most critical)
         if unique_count >= 2:
             risk_score = 0.9 + (unique_count / max(total_qi_sets, 1)) * 0.1
             reasoning = f"Unique on {unique_count} different quasi-identifier combinations"
             return 'high', min(risk_score, 1.0), reasoning
-        elif min_k == 1:
+        
+        # High risk: uniquely identifiable (k=1) but only on 1 QI set
+        if min_k == 1:
             risk_score = 0.95
             reasoning = f"Uniquely identifiable (k=1) - high re-identification risk"
             return 'high', risk_score, reasoning
         
+        # Medium risk: unique on exactly 1 QI combination (when unique_count=1, min_k≥2)
+        if unique_count == 1:
+            # Score varies based on min_k (k=2 → 0.75, k=3 → 0.65, k≥5 → 0.55)
+            risk_score = 0.5 + min(0.25, (5.0 - min_k) / 10.0)
+            reasoning = f"Unique on 1 quasi-identifier combination"
+            return 'medium', risk_score, reasoning
+        
         # High risk: extremely rare records (k=2) - very high re-identification risk
-        elif min_k == 2:
+        if min_k == 2:
             risk_score = 0.90
             reasoning = f"Extremely rare (k=2) - very high re-identification risk"
             return 'high', risk_score, reasoning
         
         # Medium risk: rare to insufficient anonymity (k=3-9)
         # Below the common k=10 threshold used in privacy standards
-        elif 3 <= min_k <= 9:
-            # Score decreases as k increases (k=3 → 0.75, k=9 → 0.55)
-            risk_score = 0.4 + (10.0 - min_k) / 20.0
+        if 3 <= min_k <= 9:
+            # Score decreases as k increases (k=3 → 0.6, k=5 → 0.5, k=9 → 0.3)
+            risk_score = 0.3 + (10.0 - min_k) / 33.33
             reasoning = f"Insufficient anonymity (k={min_k}) - below k≥10 standard"
-            return 'medium', min(risk_score, 0.80), reasoning
+            return 'medium', risk_score, reasoning
         
         # Low risk: adequate anonymity (k≥10)
         # Meets common k-anonymity thresholds for privacy protection
-        else:  # min_k >= 10
-            # Score decreases as k increases (k=10 → 0.35, k=20 → 0.30, k→∞ → 0.10)
-            risk_score = 0.1 + (10.0 / min_k) * 0.25
-            if min_k >= 20:
-                reasoning = f"Strong anonymity (k={min_k}) - well-protected"
-            elif min_k >= 15:
-                reasoning = f"Good anonymity (k={min_k}) - adequately protected"
-            else:
-                reasoning = f"Adequate anonymity (k={min_k}) - meets k≥10 standard"
-            return 'low', min(risk_score, 0.40), reasoning
+        # min_k >= 10
+        # Score decreases as k increases (k=10 → 0.35, k=20 → 0.225, k→∞ → 0.10)
+        risk_score = 0.1 + (10.0 / min_k) * 0.25
+        if min_k >= 20:
+            reasoning = f"safe anonymity (k={min_k}) - well-protected"
+        elif min_k >= 15:
+            reasoning = f"safe anonymity (k={min_k}) - adequately protected"
+        else:
+            reasoning = f"Adequate anonymity (k={min_k}) - meets k≥10 standard"
+        return 'low', min(risk_score, 0.40), reasoning
     
     def generate_risk_report(
         self,
@@ -372,7 +380,8 @@ def infer_quasi_identifiers(df: pd.DataFrame, pii_results: Dict) -> List[str]:
     
     # Common quasi-identifier patterns
     qi_keywords = ['age', 'zip', 'zipcode', 'gender', 'city', 'state', 
-                   'birth', 'dob', 'date_of_birth', 'income', 'salary']
+                   'birth', 'dob', 'date_of_birth', 'income', 'salary',
+                   'company', 'employer', 'organization', 'occupation', 'job']
     
     for column in df.columns:
         col_lower = column.lower()
@@ -386,12 +395,14 @@ def infer_quasi_identifiers(df: pd.DataFrame, pii_results: Dict) -> List[str]:
             quasi_identifiers.append(column)
             continue
         
-        # Check if column has location or demographic info from PII detection
+        # Check if column has location, demographic, or organization info from PII detection
         # But only if it's not a direct identifier
         if column in pii_results:
             pii_types = pii_results[column].pii_types
-            # Only include location if it's geographic (city, state, zip), not street address
+            # Include location (if not street address), organization, and other QI-relevant types
             if 'location' in pii_types and 'address' not in col_lower:
+                quasi_identifiers.append(column)
+            elif 'organization' in pii_types:
                 quasi_identifiers.append(column)
     
     return quasi_identifiers

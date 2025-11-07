@@ -40,22 +40,22 @@ class ColorPrinter:
     @staticmethod
     def success(message: str):
         """Print success message in green."""
-        print(f"{Fore.GREEN}{Style.BRIGHT}✓{Style.RESET_ALL} {message}")
+        print(f"{Fore.GREEN}{Style.BRIGHT}SUCCESS:{Style.RESET_ALL} {message}")
     
     @staticmethod
     def error(message: str):
         """Print error message in red."""
-        print(f"{Fore.RED}{Style.BRIGHT}✗{Style.RESET_ALL} {message}")
+        print(f"{Fore.RED}{Style.BRIGHT}ERROR:{Style.RESET_ALL} {message}")
     
     @staticmethod
     def warning(message: str):
         """Print warning message in yellow."""
-        print(f"{Fore.YELLOW}{Style.BRIGHT}⚠{Style.RESET_ALL} {message}")
+        print(f"{Fore.YELLOW}{Style.BRIGHT}WARNING:{Style.RESET_ALL} {message}")
     
     @staticmethod
     def info(message: str):
         """Print info message in blue."""
-        print(f"{Fore.BLUE}{Style.BRIGHT}ℹ{Style.RESET_ALL} {message}")
+        print(f"{Fore.BLUE}{Style.BRIGHT}INFO:{Style.RESET_ALL} {message}")
     
     @staticmethod
     def header(message: str):

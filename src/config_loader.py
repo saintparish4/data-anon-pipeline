@@ -82,7 +82,7 @@ class RuleConfig:
                 return  # Valid configuration found
         
         raise ConfigurationError(
-            f"Rule for '{self.pii_type}' has invalid parameters for strategy 'generalize'. "
+            f"Rule for '{self.pii_type}' missing required parameters for strategy 'generalize'. "
             f"Expected one of: numeric (bin_size, min_value, max_value), "
             f"location (precision), date (granularity), address (level), or IP (octets). "
             f"Got: {params}"
