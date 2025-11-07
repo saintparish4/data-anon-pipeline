@@ -7,6 +7,7 @@ setup(
     install_requires=[
         "pandas",
         "spacy",
+        "PyYAML==6.0.3",
     ],
     python_requires=">=3.8",
     entry_points={

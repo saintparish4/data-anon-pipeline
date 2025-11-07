@@ -1,0 +1,251 @@
+# ML Training Data Preset
+# Balanced approach prioritizing data utility for machine learning
+# Maintains statistical properties while protecting direct identifiers
+
+version: "1.0"
+description: "Optimized for ML training with maximum utility preservation"
+use_case: "ml_training"
+
+# This preset aims to preserve:
+# - Statistical distributions
+# - Correlations between features
+# - Data types and ranges
+# - Sufficient granularity for pattern detection
+
+rules:
+  # Direct Identifiers - Remove but keep utility where possible
+  email:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+      # Preserves uniqueness for user tracking in models
+  
+  phone:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+  
+  ssn:
+    strategy: redact_full
+    parameters:
+      replacement: "[REDACTED]"
+      # SSN has no ML value, complete removal is fine
+  
+  credit_card:
+    strategy: redact_partial
+    parameters:
+      visible_chars: 4  # Keep last 4 for card type patterns
+      mask_char: "*"
+  
+  # Names - Pseudonymization maintains relationships
+  name:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      locale: "en_US"
+      # Consistent pseudonyms preserve user behavior patterns
+  
+  first_name:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      locale: "en_US"
+  
+  last_name:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      locale: "en_US"
+  
+  # Addresses - Moderate Generalization
+  address:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      level: street  # Keep street-level for location features
+  
+  city:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      preserve_state: true  # Maintain geographic relationships
+  
+  # Location Data - Fine-grained for geographic features
+  zipcode:
+    strategy: generalize
+    parameters:
+      precision: 4  # Keep 4 digits (neighborhood-level)
+      # Preserves local patterns for demand forecasting, etc.
+  
+  postal_code:
+    strategy: generalize
+    parameters:
+      precision: 4
+  
+  ip_address:
+    strategy: generalize
+    parameters:
+      octets: 3  # Keep 3 octets for regional patterns
+  
+  latitude:
+    strategy: generalize
+    parameters:
+      bin_size: 0.1  # ~11km resolution
+      min_value: -90
+      max_value: 90
+      # Sufficient for location-based features
+  
+  longitude:
+    strategy: generalize
+    parameters:
+      bin_size: 0.1
+      min_value: -180
+      max_value: 180
+  
+  # Demographic Data - Narrow Ranges for better features
+  age:
+    strategy: generalize
+    parameters:
+      bin_size: 5  # 5-year ranges (granular enough for age effects)
+      min_value: 0
+      max_value: 100
+  
+  date_of_birth:
+    strategy: generalize
+    parameters:
+      granularity: quarter  # Keep quarter for seasonal patterns
+  
+  birth_date:
+    strategy: generalize
+    parameters:
+      granularity: quarter
+  
+  # Financial Data - Preserve distributions
+  income:
+    strategy: generalize
+    parameters:
+      bin_size: 5000  # $5k ranges (fine-grained for income effects)
+      min_value: 0
+      max_value: 500000
+  
+  salary:
+    strategy: generalize
+    parameters:
+      bin_size: 5000
+      min_value: 0
+      max_value: 500000
+  
+  transaction_amount:
+    strategy: generalize
+    parameters:
+      bin_size: 10  # $10 increments (preserves spending patterns)
+      min_value: 0
+      max_value: 10000
+  
+  # Identifiers - Hash to maintain uniqueness
+  user_id:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+      # Maintains user-level patterns
+  
+  customer_id:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+  
+  session_id:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+  
+  # Dates - Preserve temporal patterns
+  transaction_date:
+    strategy: generalize
+    parameters:
+      granularity: day  # Day-level for time series
+  
+  created_at:
+    strategy: generalize
+    parameters:
+      granularity: day
+  
+  timestamp:
+    strategy: generalize
+    parameters:
+      granularity: day
+  
+  # Categorical Features - Keep as-is or pseudonymize
+  gender:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      # Could also be kept as-is since it's not identifying
+  
+  country:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      preserve_region: true  # Maintain regional groupings
+  
+  # Behavioral Data - Preserve for pattern detection
+  page_views:
+    strategy: generalize
+    parameters:
+      bin_size: 10  # 10-view buckets
+      min_value: 0
+      max_value: 1000
+  
+  purchase_count:
+    strategy: generalize
+    parameters:
+      bin_size: 5
+      min_value: 0
+      max_value: 100
+
+# Global settings optimized for ML
+global:
+  handle_nulls: true
+  null_replacement: null  # Preserve nulls (important for ML)
+  preserve_data_types: true  # Keep numeric types for modeling
+  case_sensitive: false
+
+# Privacy targets balanced with utility
+privacy_targets:
+  min_k_anonymity: 5  # Lower threshold allows finer granularity
+  max_reidentification_risk: 0.10  # Accept up to 10% (balanced)
+  min_l_diversity: 2  # Moderate diversity requirement
+  min_utility_score: 0.85  # Target 85% utility preservation
+
+# ML-specific metrics to track
+utility_metrics:
+  preserve_correlations: true
+  preserve_distributions: true
+  track_feature_importance: true
+  compare_model_performance: true
+
+notes: |
+  This configuration balances privacy with ML utility.
+  Trade-offs:
+    + Preserves statistical properties for training
+    + Maintains feature relationships and correlations  
+    + Keeps sufficient granularity for pattern detection
+    - Higher re-identification risk than GDPR preset
+    - Not suitable for public release
+  
+  Recommended for:
+    - Internal ML model training
+    - Research partnerships with data agreements
+    - A/B testing and experimentation
+    - Feature engineering and analysis
+  
+  Not recommended for:
+    - Public datasets
+    - Third-party sharing without agreements
+    - High-risk data (health, financial)
+    - Regulatory compliance scenarios

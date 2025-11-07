@@ -1,0 +1,199 @@
+# GDPR-Compliant Anonymization Preset
+# Conservative approach prioritizing privacy protection over data utility
+# Designed to meet GDPR Article 32 (security of processing) requirements
+
+version: "1.0"
+description: "GDPR-compliant preset with strong privacy guarantees"
+compliance_framework: "GDPR"
+
+# GDPR requires that personal data be processed in a manner that ensures
+# appropriate security, including protection against unauthorized access.
+# This preset uses aggressive anonymization to achieve irreversibility.
+
+rules:
+  # Direct Identifiers - Complete Removal
+  email:
+    strategy: redact_full
+    parameters:
+      replacement: "[REDACTED]"
+  
+  phone:
+    strategy: redact_full
+    parameters:
+      replacement: "[REDACTED]"
+  
+  ssn:
+    strategy: redact_full
+    parameters:
+      replacement: "[REDACTED]"
+  
+  credit_card:
+    strategy: redact_full
+    parameters:
+      replacement: "[REDACTED]"
+  
+  passport:
+    strategy: redact_full
+    parameters:
+      replacement: "[REDACTED]"
+  
+  # Names - Pseudonymization with high entropy
+  name:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      locale: "en_US"
+  
+  first_name:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      locale: "en_US"
+  
+  last_name:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      locale: "en_US"
+  
+  # Addresses - Heavy Generalization
+  address:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      level: city  # Only keep city-level
+  
+  street_address:
+    strategy: redact_full
+    parameters:
+      replacement: "[REDACTED]"
+  
+  city:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      preserve_state: true
+  
+  # Location Data - Conservative Generalization
+  zipcode:
+    strategy: generalize
+    parameters:
+      precision: 2  # Only first 2 digits (very broad region)
+  
+  postal_code:
+    strategy: generalize
+    parameters:
+      precision: 2
+  
+  ip_address:
+    strategy: generalize
+    parameters:
+      octets: 1  # Only first octet (very broad)
+  
+  latitude:
+    strategy: generalize
+    parameters:
+      bin_size: 1.0  # 1 degree increments (~111km)
+      min_value: -90
+      max_value: 90
+  
+  longitude:
+    strategy: generalize
+    parameters:
+      bin_size: 1.0
+      min_value: -180
+      max_value: 180
+  
+  # Demographic Data - Wide Ranges
+  age:
+    strategy: generalize
+    parameters:
+      bin_size: 20  # Wide 20-year ranges
+      min_value: 0
+      max_value: 100
+  
+  date_of_birth:
+    strategy: generalize
+    parameters:
+      granularity: year  # Only year, no month/day
+  
+  birth_date:
+    strategy: generalize
+    parameters:
+      granularity: year
+  
+  # Financial Data - Broad Ranges
+  income:
+    strategy: generalize
+    parameters:
+      bin_size: 25000  # $25k ranges
+      min_value: 0
+      max_value: 500000
+  
+  salary:
+    strategy: generalize
+    parameters:
+      bin_size: 25000
+      min_value: 0
+      max_value: 500000
+  
+  # Identifiers - Hash with Salt
+  user_id:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+  
+  customer_id:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+  
+  account_number:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+  
+  # Dates - Reduce Precision
+  transaction_date:
+    strategy: generalize
+    parameters:
+      granularity: month  # Month-level only
+  
+  created_at:
+    strategy: generalize
+    parameters:
+      granularity: month
+  
+  updated_at:
+    strategy: generalize
+    parameters:
+      granularity: month
+
+# Global settings for GDPR compliance
+global:
+  handle_nulls: true
+  null_replacement: null  # Preserve nulls
+  preserve_data_types: false  # Safety over type preservation
+  case_sensitive: false
+
+# Privacy targets for GDPR compliance
+privacy_targets:
+  min_k_anonymity: 10  # High threshold for group size
+  max_reidentification_risk: 0.03  # Maximum 3% risk
+  min_l_diversity: 3  # Ensure sensitive attribute diversity
+
+# Documentation for legal review
+legal_notes:
+  article_32: "Implements appropriate technical measures for data security"
+  article_25: "Data protection by design and default"
+  recital_26: "Considers all reasonable means for re-identification"
+  pseudonymization: "Uses GDPR-recognized technique (Article 4(5))"
+  
+notes: |
+  This configuration prioritizes irreversibility and strong privacy guarantees.
+  Trade-off: Reduced data utility for analytics and ML.
+  Suitable for: Third-party sharing, public datasets, legal compliance.
+  Not suitable for: Internal analytics requiring high precision.

@@ -1,0 +1,120 @@
+# Data Anonymization Rules Configuration
+# Defines how each PII type should be anonymized
+
+version: "1.0"
+description: "Default Anonymization rules for common PII types"
+
+# Anonymization strategies:
+# - Hash: SHA256 hash with optional salt
+# - redact_full: Complete removal/masking
+# - redact_partial: Partial masking 
+# - pseudonymize: Consistent fake data (same input -> same output)
+# - generalize: Convert specific values to ranges/categories
+
+rules:
+  # Contact Information
+  email:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+    preserve_domain: false  # Set to true to preserve domain for analytics
+  
+  phone:
+    strategy: redact_partial
+    parameters:
+      visible_chars: 3  # Last 3 digits visible
+      mask_char: "*"
+  
+  # Identifiers
+  ssn:
+    strategy: redact_full
+    parameters:
+      replacement: "[REDACTED-SSN]"
+  
+  credit_card:
+    strategy: redact_partial
+    parameters:
+      visible_chars: 4  # Last 4 digits (industry standard)
+      mask_char: "*"
+  
+  # Personal Data
+  name:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true  # Same name always produces same pseudonym
+      locale: "en_US"
+  
+  address:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      level: street  # Options: full, street, city, state
+  
+  # Demographic Data
+  age:
+    strategy: generalize
+    parameters:
+      bin_size: 10  # 10-year ranges (e.g., 30-39)
+      min_value: 0
+      max_value: 100
+  
+  date_of_birth:
+    strategy: generalize
+    parameters:
+      granularity: year  # Options: day, week, month, quarter, year
+  
+  income:
+    strategy: generalize
+    parameters:
+      bin_size: 10000  # $10k ranges
+      min_value: 0
+      max_value: 500000
+  
+  # Location Data
+  zipcode:
+    strategy: generalize
+    parameters:
+      precision: 3  # Keep first 3 digits (100** format)
+  
+  city:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      preserve_state: true  # Keep in same state
+  
+  ip_address:
+    strategy: generalize
+    parameters:
+      octets: 2  # Keep first 2 octets (192.168.*.*)
+  
+  # Other
+  user_id:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+
+# Global settings
+global:
+  handle_nulls: true  # How to handle null/missing values
+  null_replacement: null  # Keep as null or use "[NULL]"
+  preserve_data_types: true  # Maintain original data types where possible
+  case_sensitive: false  # For pattern matching
+
+# Validation settings
+validation:
+  required_fields: ["strategy"]
+  allowed_strategies:
+    - hash
+    - redact_full
+    - redact_partial
+    - pseudonymize
+    - generalize
+  
+  # Strategy-specific parameter requirements
+  required_parameters:
+    generalize: ["bin_size", "min_value", "max_value"]
+    redact_partial: ["visible_chars", "mask_char"]
+    pseudonymize: ["seed_based"]
+    hash: ["algorithm"] 

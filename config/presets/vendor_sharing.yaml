@@ -1,0 +1,307 @@
+# Vendor Sharing Preset
+# Balanced approach for third-party data sharing
+# Suitable for analytics vendors, cloud services, and business partners
+
+version: "1.0"
+description: "Balanced preset for vendor and partner data sharing"
+use_case: "vendor_sharing"
+
+# This preset is designed for scenarios where you need to share data
+# with external parties (vendors, contractors, cloud services) while
+# maintaining reasonable privacy protections and business utility.
+
+rules:
+  # Direct Identifiers - Strong Protection
+  email:
+    strategy: redact_partial
+    parameters:
+      visible_chars: 0
+      mask_char: "*"
+      # Format: ***@example.com (domain visible for email validation)
+  
+  phone:
+    strategy: redact_partial
+    parameters:
+      visible_chars: 2  # Last 2 digits only
+      mask_char: "*"
+  
+  ssn:
+    strategy: redact_full
+    parameters:
+      replacement: "[REDACTED]"
+  
+  credit_card:
+    strategy: redact_partial
+    parameters:
+      visible_chars: 4  # Industry standard: last 4 digits
+      mask_char: "*"
+  
+  # Names - Pseudonymization
+  name:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      locale: "en_US"
+      # Allows vendors to track users without real identities
+  
+  first_name:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      locale: "en_US"
+  
+  last_name:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      locale: "en_US"
+  
+  # Addresses - Moderate Generalization
+  address:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      level: city  # City-level sufficient for most vendor needs
+  
+  street_address:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      level: street  # Keep street but remove house number
+  
+  city:
+    strategy: pseudonymize
+    parameters:
+      seed_based: true
+      preserve_state: true
+  
+  state:
+    strategy: pseudonymize
+    parameters:
+      seed_based: false  # Can keep actual state abbreviations
+  
+  # Location Data - Moderate Precision
+  zipcode:
+    strategy: generalize
+    parameters:
+      precision: 3  # 3-digit ZIP (broader region)
+      # Balances location analytics with privacy
+  
+  postal_code:
+    strategy: generalize
+    parameters:
+      precision: 3
+  
+  ip_address:
+    strategy: generalize
+    parameters:
+      octets: 2  # Keep 2 octets (regional)
+  
+  latitude:
+    strategy: generalize
+    parameters:
+      bin_size: 0.5  # ~55km resolution
+      min_value: -90
+      max_value: 90
+  
+  longitude:
+    strategy: generalize
+    parameters:
+      bin_size: 0.5
+      min_value: -180
+      max_value: 180
+  
+  # Demographic Data - Balanced Ranges
+  age:
+    strategy: generalize
+    parameters:
+      bin_size: 10  # 10-year ranges (standard for demographics)
+      min_value: 0
+      max_value: 100
+  
+  date_of_birth:
+    strategy: generalize
+    parameters:
+      granularity: quarter  # Quarter-year precision
+  
+  birth_date:
+    strategy: generalize
+    parameters:
+      granularity: quarter
+  
+  # Financial Data - Moderate Ranges
+  income:
+    strategy: generalize
+    parameters:
+      bin_size: 10000  # $10k ranges
+      min_value: 0
+      max_value: 500000
+      # Useful for segmentation without exact amounts
+  
+  salary:
+    strategy: generalize
+    parameters:
+      bin_size: 10000
+      min_value: 0
+      max_value: 500000
+  
+  transaction_amount:
+    strategy: generalize
+    parameters:
+      bin_size: 25  # $25 buckets for transactions
+      min_value: 0
+      max_value: 10000
+  
+  # Identifiers - Hash with Salt
+  user_id:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+      # Allows vendors to track users without revealing real IDs
+  
+  customer_id:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+  
+  account_number:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+  
+  order_id:
+    strategy: hash
+    parameters:
+      salt: true
+      algorithm: sha256
+  
+  # Dates - Week-level Precision
+  transaction_date:
+    strategy: generalize
+    parameters:
+      granularity: week  # Week-level for trend analysis
+  
+  created_at:
+    strategy: generalize
+    parameters:
+      granularity: week
+  
+  updated_at:
+    strategy: generalize
+    parameters:
+      granularity: week
+  
+  purchase_date:
+    strategy: generalize
+    parameters:
+      granularity: week
+  
+  # Categorical Data - Mostly Preserved
+  gender:
+    strategy: pseudonymize
+    parameters:
+      seed_based: false  # Can keep as-is for most vendors
+  
+  country:
+    strategy: pseudonymize
+    parameters:
+      seed_based: false  # Keep actual country codes
+  
+  language:
+    strategy: pseudonymize
+    parameters:
+      seed_based: false  # Keep actual language codes
+  
+  # Behavioral Metrics - Light Generalization
+  page_views:
+    strategy: generalize
+    parameters:
+      bin_size: 25  # 25-view buckets
+      min_value: 0
+      max_value: 1000
+  
+  session_duration:
+    strategy: generalize
+    parameters:
+      bin_size: 60  # 60-second buckets
+      min_value: 0
+      max_value: 7200  # 2 hours max
+  
+  purchase_count:
+    strategy: generalize
+    parameters:
+      bin_size: 5
+      min_value: 0
+      max_value: 100
+
+# Global settings for vendor sharing
+global:
+  handle_nulls: true
+  null_replacement: "[NULL]"  # Make nulls explicit for vendors
+  preserve_data_types: true  # Important for vendor integrations
+  case_sensitive: false
+
+# Privacy targets balanced for vendor sharing
+privacy_targets:
+  min_k_anonymity: 7  # Moderate threshold
+  max_reidentification_risk: 0.05  # 5% maximum risk
+  min_l_diversity: 2  # Basic diversity requirement
+  min_utility_score: 0.75  # Target 75% utility (balanced)
+
+# Vendor-specific considerations
+vendor_requirements:
+  data_processing_agreement: true
+  purpose_limitation: true  # Specify allowed use cases
+  retention_period: "90 days"  # Example retention limit
+  geographic_restrictions: []  # Add if needed (e.g., ["EU", "US"])
+  audit_rights: true
+
+# Common vendor use cases this supports
+supported_use_cases:
+  - "Customer analytics and segmentation"
+  - "Marketing campaign performance"
+  - "Product usage analytics"
+  - "Fraud detection and prevention"
+  - "Business intelligence and reporting"
+  - "A/B testing and experimentation"
+
+notes: |
+  This configuration provides a balanced approach for vendor data sharing.
+  
+  Privacy protections:
+    + Direct identifiers removed or heavily masked
+    + K-anonymity threshold of 7
+    + Re-identification risk below 5%
+    + Consistent pseudonymization for tracking
+  
+  Business utility:
+    + Sufficient granularity for analytics
+    + Preserves trends and patterns
+    + Supports segmentation and reporting
+    + Enables A/B testing and experiments
+  
+  Best practices for vendor sharing:
+    1. Use Data Processing Agreement (DPA)
+    2. Specify purpose limitations
+    3. Set retention periods
+    4. Require security certifications (SOC 2, ISO 27001)
+    5. Conduct vendor risk assessments
+    6. Monitor and audit vendor access
+    7. Maintain data lineage documentation
+  
+  When to use this preset:
+    + Analytics and BI vendors
+    + Marketing automation platforms
+    + Cloud service providers
+    + Third-party integrations
+    + Consulting engagements
+  
+  When NOT to use (need stronger protection):
+    - Public data releases
+    - Untrusted third parties
+    - High-risk sensitive data (health, financial)
+    - Regulatory-restricted scenarios
+  
