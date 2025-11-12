@@ -1,199 +1,151 @@
-# GDPR-Compliant Anonymization Preset
-# Conservative approach prioritizing privacy protection over data utility
-# Designed to meet GDPR Article 32 (security of processing) requirements
+# GDPR Compliant Anonymization Preset
+# Conservative approach prioritizing privacy protection
+# Suitable for: Data sharing with third parties, regulatory compliance
+# Reference: GDPR Article 32 (Security of Processing), Article 25 (Data Protection by Design)
 
-version: "1.0"
-description: "GDPR-compliant preset with strong privacy guarantees"
-compliance_framework: "GDPR"
+metadata:
+  name: "GDPR Compliant"
+  version: "1.0"
+  description: "Conservative anonymization for GDPR compliance"
+  use_case: "Third-party data sharing, regulatory reporting"
+  min_k_anonymity: 10
+  target_reidentification_risk: 0.01  # <1% acceptable risk
 
-# GDPR requires that personal data be processed in a manner that ensures
-# appropriate security, including protection against unauthorized access.
-# This preset uses aggressive anonymization to achieve irreversibility.
-
-rules:
-  # Direct Identifiers - Complete Removal
+# Anonymization rules by PII type
+anonymization_rules:
+  # Direct identifiers - must be removed or heavily anonymized
+  name:
+    technique: "pseudonymize"
+    params:
+      method: "faker"
+      preserve_format: true
+      consistent: true  # Same input always produces same output
+  
   email:
-    strategy: redact_full
-    parameters:
-      replacement: "[REDACTED]"
+    technique: "hash"
+    params:
+      algorithm: "sha256"
+      salt: true
+      preserve_domain: false  # Don't preserve domain for max privacy
   
   phone:
-    strategy: redact_full
-    parameters:
-      replacement: "[REDACTED]"
+    technique: "redact_full"
+    params:
+      replacement: "[REDACTED_PHONE]"
   
   ssn:
-    strategy: redact_full
-    parameters:
-      replacement: "[REDACTED]"
+    technique: "redact_full"
+    params:
+      replacement: "[REDACTED_SSN]"
   
   credit_card:
-    strategy: redact_full
-    parameters:
-      replacement: "[REDACTED]"
-  
-  passport:
-    strategy: redact_full
-    parameters:
-      replacement: "[REDACTED]"
-  
-  # Names - Pseudonymization with high entropy
-  name:
-    strategy: pseudonymize
-    parameters:
-      seed_based: true
-      locale: "en_US"
-  
-  first_name:
-    strategy: pseudonymize
-    parameters:
-      seed_based: true
-      locale: "en_US"
-  
-  last_name:
-    strategy: pseudonymize
-    parameters:
-      seed_based: true
-      locale: "en_US"
-  
-  # Addresses - Heavy Generalization
-  address:
-    strategy: pseudonymize
-    parameters:
-      seed_based: true
-      level: city  # Only keep city-level
-  
-  street_address:
-    strategy: redact_full
-    parameters:
-      replacement: "[REDACTED]"
-  
-  city:
-    strategy: pseudonymize
-    parameters:
-      seed_based: true
-      preserve_state: true
-  
-  # Location Data - Conservative Generalization
-  zipcode:
-    strategy: generalize
-    parameters:
-      precision: 2  # Only first 2 digits (very broad region)
-  
-  postal_code:
-    strategy: generalize
-    parameters:
-      precision: 2
+    technique: "redact_full"
+    params:
+      replacement: "[REDACTED_CC]"
   
   ip_address:
-    strategy: generalize
-    parameters:
-      octets: 1  # Only first octet (very broad)
+    technique: "generalize"
+    params:
+      method: "subnet"
+      subnet_mask: 16  # Keep only first two octets
   
-  latitude:
-    strategy: generalize
-    parameters:
-      bin_size: 1.0  # 1 degree increments (~111km)
-      min_value: -90
-      max_value: 90
-  
-  longitude:
-    strategy: generalize
-    parameters:
-      bin_size: 1.0
-      min_value: -180
-      max_value: 180
-  
-  # Demographic Data - Wide Ranges
+  # Quasi-identifiers - generalize aggressively
   age:
-    strategy: generalize
-    parameters:
-      bin_size: 20  # Wide 20-year ranges
-      min_value: 0
-      max_value: 100
+    technique: "generalize"
+    params:
+      method: "bins"
+      bin_size: 10
+      format: "range"  # Output: "30-39"
   
   date_of_birth:
-    strategy: generalize
-    parameters:
-      granularity: year  # Only year, no month/day
+    technique: "generalize"
+    params:
+      method: "year_only"
+      format: "decade"  # Output: "1980s"
   
-  birth_date:
-    strategy: generalize
-    parameters:
-      granularity: year
+  zipcode:
+    technique: "generalize"
+    params:
+      method: "truncate"
+      keep_digits: 3  # 10001 -> 100**
   
-  # Financial Data - Broad Ranges
+  address:
+    technique: "generalize"
+    params:
+      method: "city_state_only"
+      include_street: false
+  
+  city:
+    technique: "preserve"
+    params:
+      validation: "check_population"
+      min_population: 100000  # Only preserve if city >100k population
+      fallback: "generalize_to_state"
+  
+  state:
+    technique: "preserve"
+    params: {}
+  
+  # Sensitive attributes - preserve but ensure diversity within equivalence classes
   income:
-    strategy: generalize
-    parameters:
-      bin_size: 25000  # $25k ranges
-      min_value: 0
-      max_value: 500000
+    technique: "generalize"
+    params:
+      method: "bins"
+      bin_size: 25000
+      format: "range"  # Output: "50000-74999"
   
   salary:
-    strategy: generalize
-    parameters:
+    technique: "generalize"
+    params:
+      method: "bins"
       bin_size: 25000
-      min_value: 0
-      max_value: 500000
+      format: "range"
   
-  # Identifiers - Hash with Salt
-  user_id:
-    strategy: hash
-    parameters:
-      salt: true
-      algorithm: sha256
+  # Timestamps - generalize to reduce precision
+  timestamp:
+    technique: "generalize"
+    params:
+      method: "round"
+      precision: "day"  # Remove time component
   
-  customer_id:
-    strategy: hash
-    parameters:
-      salt: true
-      algorithm: sha256
-  
-  account_number:
-    strategy: hash
-    parameters:
-      salt: true
-      algorithm: sha256
-  
-  # Dates - Reduce Precision
-  transaction_date:
-    strategy: generalize
-    parameters:
-      granularity: month  # Month-level only
-  
-  created_at:
-    strategy: generalize
-    parameters:
-      granularity: month
-  
-  updated_at:
-    strategy: generalize
-    parameters:
-      granularity: month
+  datetime:
+    technique: "generalize"
+    params:
+      method: "round"
+      precision: "day"
 
-# Global settings for GDPR compliance
-global:
-  handle_nulls: true
-  null_replacement: null  # Preserve nulls
-  preserve_data_types: false  # Safety over type preservation
-  case_sensitive: false
-
-# Privacy targets for GDPR compliance
-privacy_targets:
-  min_k_anonymity: 10  # High threshold for group size
-  max_reidentification_risk: 0.03  # Maximum 3% risk
-  min_l_diversity: 3  # Ensure sensitive attribute diversity
-
-# Documentation for legal review
-legal_notes:
-  article_32: "Implements appropriate technical measures for data security"
-  article_25: "Data protection by design and default"
-  recital_26: "Considers all reasonable means for re-identification"
-  pseudonymization: "Uses GDPR-recognized technique (Article 4(5))"
+# Privacy validation thresholds
+privacy_thresholds:
+  k_anonymity:
+    enabled: true
+    minimum_k: 10
+    quasi_identifiers:
+      - age
+      - zipcode
+      - gender
+      - city
   
-notes: |
-  This configuration prioritizes irreversibility and strong privacy guarantees.
-  Trade-off: Reduced data utility for analytics and ML.
-  Suitable for: Third-party sharing, public datasets, legal compliance.
-  Not suitable for: Internal analytics requiring high precision.
+  l_diversity:
+    enabled: true
+    minimum_l: 2
+    sensitive_attributes:
+      - income
+      - medical_condition
+      - salary
+  
+  reidentification_risk:
+    enabled: true
+    max_risk_percent: 1.0  # Maximum 1% of records can be high risk
+
+# Utility preservation targets
+utility_targets:
+  min_correlation_preservation: 0.75  # Maintain at least 75% of correlations
+  min_distribution_similarity: 0.80   # 80% distribution similarity (KS test)
+  acceptable_information_loss: 0.25   # Up to 25% information loss acceptable
+
+# Output configuration
+output:
+  include_risk_scores: false  # Don't include risk scores in output (potential leak)
+  include_original_ids: false  # Don't preserve original record IDs
+  generate_compliance_report: true
+  report_format: "html"

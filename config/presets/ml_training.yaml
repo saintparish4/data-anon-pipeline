@@ -1,251 +1,213 @@
-# ML Training Data Preset
-# Balanced approach prioritizing data utility for machine learning
-# Maintains statistical properties while protecting direct identifiers
+# ML Training Anonymization Preset
+# Balanced approach maximizing utility for machine learning workloads
+# Suitable for: Training datasets, research collaboration, model development
+# Focus: Preserve statistical properties and correlations
 
-version: "1.0"
-description: "Optimized for ML training with maximum utility preservation"
-use_case: "ml_training"
+metadata:
+  name: "ML Training Optimized"
+  version: "1.0"
+  description: "Maximize utility for ML training while maintaining privacy"
+  use_case: "ML model training, statistical analysis, research"
+  min_k_anonymity: 5  # Relaxed compared to GDPR
+  target_reidentification_risk: 0.05  # <5% acceptable risk
 
-# This preset aims to preserve:
-# - Statistical distributions
-# - Correlations between features
-# - Data types and ranges
-# - Sufficient granularity for pattern detection
-
-rules:
-  # Direct Identifiers - Remove but keep utility where possible
+# Anonymization rules optimized for ML utility
+anonymization_rules:
+  # Direct identifiers - still must be anonymized
+  name:
+    technique: "pseudonymize"
+    params:
+      method: "faker"
+      preserve_format: true
+      consistent: true
+      preserve_demographics: true  # Preserve gender/ethnicity patterns
+  
   email:
-    strategy: hash
-    parameters:
+    technique: "hash"
+    params:
+      algorithm: "sha256"
       salt: true
-      algorithm: sha256
-      # Preserves uniqueness for user tracking in models
+      preserve_domain: true  # Keep domain for feature engineering
   
   phone:
-    strategy: hash
-    parameters:
-      salt: true
-      algorithm: sha256
+    technique: "pseudonymize"
+    params:
+      method: "faker"
+      preserve_area_code: true  # Geographic signal preserved
   
   ssn:
-    strategy: redact_full
-    parameters:
-      replacement: "[REDACTED]"
-      # SSN has no ML value, complete removal is fine
+    technique: "hash"
+    params:
+      algorithm: "sha256"
+      salt: true
   
   credit_card:
-    strategy: redact_partial
-    parameters:
-      visible_chars: 4  # Keep last 4 for card type patterns
+    technique: "redact_partial"
+    params:
+      visible_chars: 4  # Preserve card type (Visa/MC/etc) - keep last 4 digits
       mask_char: "*"
   
-  # Names - Pseudonymization maintains relationships
-  name:
-    strategy: pseudonymize
-    parameters:
-      seed_based: true
-      locale: "en_US"
-      # Consistent pseudonyms preserve user behavior patterns
-  
-  first_name:
-    strategy: pseudonymize
-    parameters:
-      seed_based: true
-      locale: "en_US"
-  
-  last_name:
-    strategy: pseudonymize
-    parameters:
-      seed_based: true
-      locale: "en_US"
-  
-  # Addresses - Moderate Generalization
-  address:
-    strategy: pseudonymize
-    parameters:
-      seed_based: true
-      level: street  # Keep street-level for location features
-  
-  city:
-    strategy: pseudonymize
-    parameters:
-      seed_based: true
-      preserve_state: true  # Maintain geographic relationships
-  
-  # Location Data - Fine-grained for geographic features
-  zipcode:
-    strategy: generalize
-    parameters:
-      precision: 4  # Keep 4 digits (neighborhood-level)
-      # Preserves local patterns for demand forecasting, etc.
-  
-  postal_code:
-    strategy: generalize
-    parameters:
-      precision: 4
-  
   ip_address:
-    strategy: generalize
-    parameters:
-      octets: 3  # Keep 3 octets for regional patterns
+    technique: "generalize"
+    params:
+      method: "subnet"
+      subnet_mask: 24  # Keep more precision than GDPR (first 3 octets)
   
-  latitude:
-    strategy: generalize
-    parameters:
-      bin_size: 0.1  # ~11km resolution
-      min_value: -90
-      max_value: 90
-      # Sufficient for location-based features
-  
-  longitude:
-    strategy: generalize
-    parameters:
-      bin_size: 0.1
-      min_value: -180
-      max_value: 180
-  
-  # Demographic Data - Narrow Ranges for better features
+  # Quasi-identifiers - generalize lightly to preserve variance
   age:
-    strategy: generalize
-    parameters:
-      bin_size: 5  # 5-year ranges (granular enough for age effects)
-      min_value: 0
-      max_value: 100
+    technique: "generalize"
+    params:
+      method: "bins"
+      bin_size: 5  # Smaller bins = more utility
+      format: "midpoint"  # Output: 32 (midpoint of 30-34)
+      add_noise: true  # Optional: add small Laplacian noise
+      noise_scale: 1.0
   
   date_of_birth:
-    strategy: generalize
-    parameters:
-      granularity: quarter  # Keep quarter for seasonal patterns
+    technique: "generalize"
+    params:
+      method: "year_only"
+      format: "year"  # Keep exact year (not decade)
   
-  birth_date:
-    strategy: generalize
-    parameters:
-      granularity: quarter
+  zipcode:
+    technique: "generalize"
+    params:
+      method: "truncate"
+      keep_digits: 4  # 10001 -> 1000* (more precision than GDPR)
   
-  # Financial Data - Preserve distributions
-  income:
-    strategy: generalize
-    parameters:
-      bin_size: 5000  # $5k ranges (fine-grained for income effects)
-      min_value: 0
-      max_value: 500000
+  address:
+    technique: "generalize"
+    params:
+      method: "city_state_only"
+      include_street: false
   
-  salary:
-    strategy: generalize
-    parameters:
-      bin_size: 5000
-      min_value: 0
-      max_value: 500000
+  city:
+    technique: "preserve"
+    params:
+      validation: "check_population"
+      min_population: 50000  # Lower threshold than GDPR
+      fallback: "generalize_to_state"
   
-  transaction_amount:
-    strategy: generalize
-    parameters:
-      bin_size: 10  # $10 increments (preserves spending patterns)
-      min_value: 0
-      max_value: 10000
+  state:
+    technique: "preserve"
+    params: {}
   
-  # Identifiers - Hash to maintain uniqueness
-  user_id:
-    strategy: hash
-    parameters:
-      salt: true
-      algorithm: sha256
-      # Maintains user-level patterns
-  
-  customer_id:
-    strategy: hash
-    parameters:
-      salt: true
-      algorithm: sha256
-  
-  session_id:
-    strategy: hash
-    parameters:
-      salt: true
-      algorithm: sha256
-  
-  # Dates - Preserve temporal patterns
-  transaction_date:
-    strategy: generalize
-    parameters:
-      granularity: day  # Day-level for time series
-  
-  created_at:
-    strategy: generalize
-    parameters:
-      granularity: day
-  
-  timestamp:
-    strategy: generalize
-    parameters:
-      granularity: day
-  
-  # Categorical Features - Keep as-is or pseudonymize
-  gender:
-    strategy: pseudonymize
-    parameters:
-      seed_based: true
-      # Could also be kept as-is since it's not identifying
+  county:
+    technique: "preserve"
+    params: {}
   
   country:
-    strategy: pseudonymize
-    parameters:
-      seed_based: true
-      preserve_region: true  # Maintain regional groupings
+    technique: "preserve"
+    params: {}
   
-  # Behavioral Data - Preserve for pattern detection
-  page_views:
-    strategy: generalize
-    parameters:
-      bin_size: 10  # 10-view buckets
-      min_value: 0
-      max_value: 1000
+  # Sensitive attributes - preserve with minimal transformation
+  income:
+    technique: "generalize"
+    params:
+      method: "bins"
+      bin_size: 10000  # Smaller bins for ML
+      format: "midpoint"  # Return numeric midpoint for regression
+      preserve_outliers: true  # Keep high/low values for model training
   
-  purchase_count:
-    strategy: generalize
-    parameters:
-      bin_size: 5
-      min_value: 0
-      max_value: 100
-
-# Global settings optimized for ML
-global:
-  handle_nulls: true
-  null_replacement: null  # Preserve nulls (important for ML)
-  preserve_data_types: true  # Keep numeric types for modeling
-  case_sensitive: false
-
-# Privacy targets balanced with utility
-privacy_targets:
-  min_k_anonymity: 5  # Lower threshold allows finer granularity
-  max_reidentification_risk: 0.10  # Accept up to 10% (balanced)
-  min_l_diversity: 2  # Moderate diversity requirement
-  min_utility_score: 0.85  # Target 85% utility preservation
-
-# ML-specific metrics to track
-utility_metrics:
-  preserve_correlations: true
-  preserve_distributions: true
-  track_feature_importance: true
-  compare_model_performance: true
-
-notes: |
-  This configuration balances privacy with ML utility.
-  Trade-offs:
-    + Preserves statistical properties for training
-    + Maintains feature relationships and correlations  
-    + Keeps sufficient granularity for pattern detection
-    - Higher re-identification risk than GDPR preset
-    - Not suitable for public release
+  salary:
+    technique: "generalize"
+    params:
+      method: "bins"
+      bin_size: 10000
+      format: "midpoint"
+      preserve_outliers: true
   
-  Recommended for:
-    - Internal ML model training
-    - Research partnerships with data agreements
-    - A/B testing and experimentation
-    - Feature engineering and analysis
+  # Behavioral/transactional data - preserve precision
+  purchase_amount:
+    technique: "add_noise"
+    params:
+      method: "laplacian"
+      epsilon: 1.0  # Differential privacy parameter
+      sensitivity: 100
   
-  Not recommended for:
-    - Public datasets
-    - Third-party sharing without agreements
-    - High-risk data (health, financial)
-    - Regulatory compliance scenarios
+  transaction_count:
+    technique: "add_noise"
+    params:
+      method: "laplacian"
+      epsilon: 1.0
+      sensitivity: 5
+  
+  # Timestamps - preserve more precision than GDPR
+  timestamp:
+    technique: "generalize"
+    params:
+      method: "round"
+      precision: "day"  # Day-level precision (hour not supported)
+  
+  datetime:
+    technique: "generalize"
+    params:
+      method: "round"
+      precision: "day"
+  
+  # Categorical features - preserve as-is (no PII)
+  category:
+    technique: "preserve"
+    params: {}
+  
+  product_type:
+    technique: "preserve"
+    params: {}
+  
+  device_type:
+    technique: "preserve"
+    params: {}
+
+# Privacy validation thresholds (relaxed for ML)
+privacy_thresholds:
+  k_anonymity:
+    enabled: true
+    minimum_k: 5  # Lower than GDPR
+    quasi_identifiers:
+      - age
+      - zipcode
+      - gender
+      - city
+    # Allow some records to have k<5 if they're outliers valuable for ML
+    allow_outliers: true
+    max_outlier_percent: 5.0
+  
+  l_diversity:
+    enabled: true
+    minimum_l: 2
+    sensitive_attributes:
+      - income
+      - salary
+  
+  reidentification_risk:
+    enabled: true
+    max_risk_percent: 5.0  # Higher acceptable risk for ML use case
+
+# Utility preservation targets (prioritized for ML)
+utility_targets:
+  min_correlation_preservation: 0.90  # Maintain 90% of correlations (critical for ML)
+  min_distribution_similarity: 0.85   # 85% distribution similarity
+  acceptable_information_loss: 0.15   # Only 15% information loss acceptable
+  preserve_feature_importance: true   # Maintain relative feature importance
+  
+  # ML-specific metrics
+  ml_metrics:
+    test_model_performance: true
+    model_types:
+      - "random_forest"
+      - "logistic_regression"
+    min_accuracy_preservation: 0.95  # Model should perform ≥95% as well
+    min_auc_preservation: 0.93
+
+# Output configuration
+output:
+  include_risk_scores: true  # Include for analysis
+  include_original_ids: true  # Map back to original for validation
+  generate_compliance_report: true
+  generate_utility_report: true
+  report_format: "html"
+  
+  # ML-specific outputs
+  include_feature_importance: true
+  include_correlation_matrix: true
+  include_distribution_plots: true
