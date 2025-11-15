@@ -320,6 +320,79 @@ class RiskAssessmentEngine:
         
         return risk_scores, risk_report
     
+    def assess(
+        self,
+        df: pd.DataFrame,
+        scan_results: Dict
+    ) -> Dict:
+        """
+        Convenience method for assessing risk with PII scan results.
+        
+        This method integrates with PII scanner results to automatically
+        infer quasi-identifiers and perform risk assessment.
+        
+        Args:
+            df: DataFrame to analyze
+            scan_results: Results from PIIScanner (dict of column -> PIIResult)
+            
+        Returns:
+            Dictionary with risk assessment results including:
+            - total_records: Number of records analyzed
+            - risk_distribution: Count/percentage by risk level
+            - risk_scores: List of individual risk scores
+            - risk_report: Aggregate RiskReport object
+        """
+        # Infer quasi-identifiers from PII results
+        quasi_ids = infer_quasi_identifiers(df, scan_results)
+        
+        if not quasi_ids:
+            # No quasi-identifiers found, return default safe assessment
+            return {
+                'total_records': len(df),
+                'risk_distribution': {
+                    'high': {'count': 0, 'percentage': 0.0},
+                    'medium': {'count': 0, 'percentage': 0.0},
+                    'low': {'count': len(df), 'percentage': 100.0}
+                },
+                'risk_scores': [],
+                'risk_report': None,
+                'quasi_identifiers': []
+            }
+        
+        # Create QI sets to test
+        qi_sets = [quasi_ids]  # Test all QIs together
+        # Also test pairs of QIs for more detailed analysis
+        if len(quasi_ids) > 1:
+            for i, qi in enumerate(quasi_ids[:3]):  # Limit to first 3 to avoid too many combinations
+                qi_sets.append([qi])
+        
+        # Perform risk assessment
+        risk_scores, risk_report = self.assess_dataset(df, qi_sets)
+        
+        # Format results
+        return {
+            'total_records': risk_report.total_records,
+            'risk_distribution': {
+                'high': {
+                    'count': risk_report.high_risk_count,
+                    'percentage': risk_report.high_risk_percentage
+                },
+                'medium': {
+                    'count': risk_report.medium_risk_count,
+                    'percentage': risk_report.medium_risk_percentage
+                },
+                'low': {
+                    'count': risk_report.low_risk_count,
+                    'percentage': risk_report.low_risk_percentage
+                }
+            },
+            'average_k_anonymity': risk_report.average_k_anonymity,
+            'min_k_anonymity': risk_report.min_k_anonymity,
+            'risk_scores': risk_scores,
+            'risk_report': risk_report,
+            'quasi_identifiers': quasi_ids
+        }
+    
     def get_high_risk_records(
         self,
         df: pd.DataFrame,

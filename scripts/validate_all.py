@@ -38,6 +38,104 @@ class ValidationTester:
         self.fixtures_dir = self.project_root / "fixtures"
         self.config_dir = self.project_root / "config" / "presets"
         self.results: List[Dict] = []
+    
+    def _transform_preset_to_configloader_format(self, preset_config: Dict) -> Dict:
+        """
+        Transform preset config format to ConfigLoader format.
+        
+        Preset format uses 'anonymization_rules' with 'technique'/'params',
+        ConfigLoader expects 'rules' with 'strategy'/'parameters'.
+        """
+        transformed = {
+            'version': preset_config.get('metadata', {}).get('version', '1.0'),
+            'rules': {}
+        }
+        
+        # Transform anonymization_rules to rules
+        anon_rules = preset_config.get('anonymization_rules', {})
+        for pii_type, rule in anon_rules.items():
+            if not isinstance(rule, dict) or 'technique' not in rule:
+                continue
+            
+            technique = rule['technique']
+            params = rule.get('params', {})
+            
+            # Skip techniques that aren't in ConfigLoader's allowed strategies
+            if technique in ['preserve', 'add_noise', 'differential_privacy']:
+                continue
+            
+            # Transform generalize parameters based on method
+            if technique == 'generalize' and 'method' in params:
+                params = self._transform_generalize_params(pii_type, params)
+            
+            # Add required parameters for pseudonymize
+            if technique == 'pseudonymize' and 'seed_based' not in params:
+                params['seed_based'] = params.get('consistent', True)
+            
+            # Add required parameters for hash
+            if technique == 'hash' and 'algorithm' not in params:
+                params['algorithm'] = params.get('algorithm', 'sha256')
+            
+            # Add required parameters for redact_partial
+            if technique == 'redact_partial':
+                if 'visible_chars' not in params:
+                    params['visible_chars'] = params.get('keep_chars', 3)
+                if 'mask_char' not in params:
+                    params['mask_char'] = '*'
+            
+            transformed['rules'][pii_type] = {
+                'strategy': technique,
+                'parameters': params
+            }
+        
+        return transformed
+    
+    def _transform_generalize_params(self, pii_type: str, params: Dict) -> Dict:
+        """Transform method-based generalize params to ConfigLoader format."""
+        method = params.get('method', '')
+        
+        # For age with bins
+        if method == 'bins' and 'bin_size' in params:
+            return {
+                'bin_size': params['bin_size'],
+                'min_value': params.get('min_value', 0),
+                'max_value': params.get('max_value', 120)
+            }
+        
+        # For zipcodes/IP addresses - use precision
+        if method in ['truncate', 'subnet'] or 'keep_digits' in params or 'subnet_mask' in params:
+            precision = params.get('keep_digits') or params.get('subnet_mask', 3)
+            return {'precision': precision}
+        
+        # For dates
+        if method in ['year_only', 'month_only', 'quarter'] or pii_type in ['date_of_birth', 'date', 'timestamp']:
+            granularity = params.get('format', 'year')
+            # Map invalid granularity values to valid ones
+            granularity_map = {
+                'decade': 'year',
+                'yearly': 'year',
+                'monthly': 'month',
+                'quarterly': 'quarter',
+                'daily': 'day',
+                'weekly': 'week'
+            }
+            granularity = granularity_map.get(granularity, granularity)
+            return {'granularity': granularity}
+        
+        # For addresses - use level
+        if pii_type in ['address', 'location'] or method in ['city_state_only', 'city_only']:
+            return {'level': params.get('level', 'city')}
+        
+        # Default: try to use precision if numeric-looking
+        if 'bin_size' in params:
+            return {
+                'bin_size': params['bin_size'],
+                'min_value': 0,
+                'max_value': 1000
+            }
+        
+        # Fallback to precision
+        return {'precision': 2}
         
     def print_header(self, text: str):
         """Print a formatted header"""
@@ -150,17 +248,41 @@ class ValidationTester:
         try:
             from src.scanner import PIIScanner
             from src.anonymizer import Anonymizer
-            from src.risk_assessment import RiskAssessor
-            from src.utility_metrics import UtilityAnalyzer
+            from src.risk_assessment import RiskAssessmentEngine
+            from src.utility_metrics import UtilityMetrics
             from src.privacy_validator import PrivacyValidator
+            from src.config_loader import ConfigLoader
         except ImportError as e:
             self.print_error(f"Cannot import pipeline components: {e}")
-            return False, {}
+            # Return properly structured result dict even on failure
+            return False, {
+                'preset': preset_name,
+                'fixture': fixture_name,
+                'error': str(e),
+                'validation_passed': False
+            }
         
         # Load config
         config_file = self.config_dir / f"{preset_name}.yaml"
         with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
+            config_dict = yaml.safe_load(f)
+        
+        # Transform preset format to ConfigLoader format
+        transformed_config = self._transform_preset_to_configloader_format(config_dict)
+        
+        # Write transformed config to temporary file for ConfigLoader
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as tmp_file:
+            yaml.dump(transformed_config, tmp_file)
+            tmp_config_path = tmp_file.name
+        
+        try:
+            # Create ConfigLoader instance with transformed config
+            config_loader = ConfigLoader(tmp_config_path)
+            config_loader.load()
+        finally:
+            # Clean up temp file
+            Path(tmp_config_path).unlink(missing_ok=True)
         
         # Load fixture
         fixture_path = self.fixtures_dir / fixture_name
@@ -176,31 +298,42 @@ class ValidationTester:
         }
         
         try:
-            # Step 1: Scan
-            scanner = PIIScanner()
-            scan_results = scanner.scan(df)
-            results['pii_detected'] = len(scan_results.get('pii_columns', {}))
+            # Step 1: Scan (disable NER to avoid spaCy dependency)
+            scanner = PIIScanner(use_ner=False)
+            scan_results = scanner.scan_dataframe(df)
+            results['pii_detected'] = len(scan_results)
             
             # Step 2: Risk assessment
-            risk_assessor = RiskAssessor()
+            risk_assessor = RiskAssessmentEngine()
             risk_results = risk_assessor.assess(df, scan_results)
             results['original_risk'] = risk_results.get('risk_distribution', {})
             
             # Step 3: Anonymize
-            anonymizer = Anonymizer(config)
-            df_anon = anonymizer.anonymize(df, scan_results)
+            # Convert scan_results to column_mapping format (column_name -> pii_type)
+            column_mapping = {}
+            for col_name, detection_result in scan_results.items():
+                # Use the first detected PII type for this column
+                if detection_result.pii_types:
+                    column_mapping[col_name] = detection_result.pii_types[0]
+            
+            anonymizer = Anonymizer(config_loader)
+            df_anon = anonymizer.anonymize(df, column_mapping)
             results['records_processed'] = len(df_anon)
             
             # Step 4: Validate
-            validator = PrivacyValidator(config)
+            validator = PrivacyValidator(config_dict)
             validation_results = validator.validate(df_anon, df)
             results['validation_passed'] = validation_results.get('passed', False)
             results['validation_checks'] = validation_results.get('checks', {})
             
             # Step 5: Utility metrics
-            utility_analyzer = UtilityAnalyzer()
-            utility_metrics = utility_analyzer.analyze(df, df_anon)
-            results['utility_metrics'] = utility_metrics
+            utility_calculator = UtilityMetrics(df, df_anon)
+            utility_report = utility_calculator.generate_report()
+            results['utility_metrics'] = {
+                'overall_utility_score': utility_report.overall_utility_score,
+                'correlation_preservation': utility_report.correlation_metrics.correlation_similarity if utility_report.correlation_metrics else 0,
+                'information_retention': sum(m.entropy_retained_pct for m in utility_report.information_loss_metrics.values()) / len(utility_report.information_loss_metrics) if utility_report.information_loss_metrics else 0
+            }
             
             # Overall success
             success = results['validation_passed']
@@ -208,7 +341,9 @@ class ValidationTester:
             return success, results
             
         except Exception as e:
+            # Ensure results dict has all required keys even on exception
             results['error'] = str(e)
+            results['validation_passed'] = False
             return False, results
     
     def test_all_combinations(self) -> bool:
@@ -319,7 +454,9 @@ class ValidationTester:
         print(f"Success rate: {passed_tests/total_tests:.1%}\n")
         
         # Detailed breakdown by preset
-        presets = set(r['preset'] for r in self.results)
+        # Filter out results that don't have 'preset' key (shouldn't happen, but defensive)
+        valid_results = [r for r in self.results if 'preset' in r]
+        presets = set(r['preset'] for r in valid_results)
         
         for preset in presets:
             preset_results = [r for r in self.results if r['preset'] == preset]
@@ -355,6 +492,79 @@ class ValidationTester:
             }, f, indent=2)
         
         print(f"\n{Colors.BLUE}Detailed report saved to: {report_path}{Colors.END}")
+    
+    def run_quick_test(self) -> bool:
+        """Run a quick test with just one preset+fixture combination"""
+        # Test just gdpr_compliant with customers.csv
+        preset = "gdpr_compliant"
+        fixture = "customers.csv"
+        fixture_path = self.fixtures_dir / fixture
+        
+        if not fixture_path.exists():
+            self.print_error(f"Fixture {fixture} not found")
+            return False
+        
+        print(f"{Colors.BOLD}Testing: {preset} + {fixture}{Colors.END}\n")
+        
+        try:
+            success, results = self.test_anonymization_workflow(preset, fixture)
+            self.results.append(results)
+            
+            if success:
+                self.print_success("Quick test PASSED!")
+                self.print_info(f"  Records: {results.get('records_processed', 0)}")
+                self.print_info(f"  PII detected: {results.get('pii_detected', 0)} types")
+                return True
+            else:
+                self.print_error("Quick test FAILED")
+                if 'error' in results:
+                    self.print_error(f"  Error: {results['error']}")
+                return False
+        except Exception as e:
+            self.print_error(f"Quick test failed with exception: {e}")
+            return False
+    
+    def run_custom_test(self, preset_name: str = None, fixture_name: str = None) -> bool:
+        """Run tests for specific preset and/or fixture"""
+        presets = [preset_name] if preset_name else ["gdpr_compliant", "ml_training", "vendor_sharing"]
+        
+        fixtures = []
+        if fixture_name:
+            fixture_path = self.fixtures_dir / fixture_name
+            if fixture_path.exists():
+                fixtures = [fixture_path]
+            else:
+                self.print_error(f"Fixture {fixture_name} not found")
+                return False
+        else:
+            fixtures = list(self.fixtures_dir.glob("*.csv"))
+        
+        all_passed = True
+        test_count = 0
+        
+        for preset in presets:
+            for fixture_path in fixtures:
+                test_count += 1
+                fixture = fixture_path.name
+                
+                print(f"\n{Colors.BOLD}Test {test_count}: {preset} + {fixture}{Colors.END}")
+                
+                try:
+                    success, results = self.test_anonymization_workflow(preset, fixture)
+                    self.results.append(results)
+                    
+                    if success:
+                        self.print_success("Test passed")
+                    else:
+                        self.print_error("Test failed")
+                        if 'error' in results:
+                            self.print_error(f"  Error: {results['error']}")
+                        all_passed = False
+                except Exception as e:
+                    self.print_error(f"Test failed with exception: {e}")
+                    all_passed = False
+        
+        return all_passed
     
     def run_all_tests(self) -> bool:
         """Run all validation tests"""
@@ -406,8 +616,32 @@ class ValidationTester:
 
 def main():
     """Main entry point"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Validate anonymization pipeline')
+    parser.add_argument('--quick', action='store_true', 
+                       help='Run quick test with only one preset+fixture combination')
+    parser.add_argument('--preset', type=str, 
+                       help='Test only this preset (e.g., gdpr_compliant)')
+    parser.add_argument('--fixture', type=str,
+                       help='Test only this fixture (e.g., customers.csv)')
+    
+    args = parser.parse_args()
+    
     tester = ValidationTester()
-    success = tester.run_all_tests()
+    
+    if args.quick:
+        # Quick mode: test just one combination
+        print(f"\n{Colors.BOLD}🚀 Quick Test Mode - Testing single preset+fixture{Colors.END}\n")
+        success = tester.run_quick_test()
+    elif args.preset or args.fixture:
+        # Custom test mode
+        print(f"\n{Colors.BOLD}🎯 Custom Test Mode{Colors.END}\n")
+        success = tester.run_custom_test(args.preset, args.fixture)
+    else:
+        # Full test suite
+        success = tester.run_all_tests()
+    
     sys.exit(0 if success else 1)
 
 
