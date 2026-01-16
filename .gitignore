@@ -32,3 +32,20 @@ htmlcov/
 # Jupyter Notebooks
 .ipynb_checkpoints
 
+# Outputs
+outputs/
+*.csv
+!fixtures/*.csv
+*.html
+*.json
+!config/**/*.json
+!package.json
+
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary demo files
+demo_*.csv
+anon*.csv
