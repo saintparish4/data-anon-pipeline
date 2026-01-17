@@ -17,22 +17,24 @@ class ComplianceReportGenerator:
     Generates compliance reports documenting anonymization process,
     privacy guarantees, and utility preservation.
     """
-    
+
     def __init__(self):
         """Initialize report generator."""
         self.timestamp = datetime.now()
-    
-    def generate(self,
-                original_data: pd.DataFrame,
-                anonymized_data: pd.DataFrame,
-                config: Optional[Dict] = None,
-                scan_results: Optional[Dict] = None,
-                validation_results: Optional[Dict] = None,
-                utility_metrics: Optional[Dict] = None,
-                output_format: str = "html") -> str:
+
+    def generate(
+        self,
+        original_data: pd.DataFrame,
+        anonymized_data: pd.DataFrame,
+        config: Optional[Dict] = None,
+        scan_results: Optional[Dict] = None,
+        validation_results: Optional[Dict] = None,
+        utility_metrics: Optional[Dict] = None,
+        output_format: str = "html",
+    ) -> str:
         """
         Generate compliance report.
-        
+
         Args:
             original_data: Original dataset
             anonymized_data: Anonymized dataset
@@ -41,7 +43,7 @@ class ComplianceReportGenerator:
             validation_results: Privacy validation results
             utility_metrics: Utility preservation metrics
             output_format: Output format ('html', 'markdown', or 'json')
-        
+
         Returns:
             Report as string in requested format
         """
@@ -52,9 +54,9 @@ class ComplianceReportGenerator:
             config,
             scan_results,
             validation_results,
-            utility_metrics
+            utility_metrics,
         )
-        
+
         # Generate report in requested format
         if output_format == "html":
             return self._generate_html(report_data)
@@ -64,128 +66,157 @@ class ComplianceReportGenerator:
             return self._generate_json(report_data)
         else:
             raise ValueError(f"Unsupported output format: {output_format}")
-    
-    def _gather_report_data(self,
-                           original_data: pd.DataFrame,
-                           anonymized_data: pd.DataFrame,
-                           config: Optional[Dict],
-                           scan_results: Optional[Dict],
-                           validation_results: Optional[Dict],
-                           utility_metrics: Optional[Dict]) -> Dict[str, Any]:
+
+    def _gather_report_data(
+        self,
+        original_data: pd.DataFrame,
+        anonymized_data: pd.DataFrame,
+        config: Optional[Dict],
+        scan_results: Optional[Dict],
+        validation_results: Optional[Dict],
+        utility_metrics: Optional[Dict],
+    ) -> Dict[str, Any]:
         """Gather all data needed for the report."""
-        
+
         data = {
-            'timestamp': self.timestamp.isoformat(),
-            'timestamp_formatted': self.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-            'dataset_info': {
-                'original_records': len(original_data),
-                'original_columns': len(original_data.columns),
-                'anonymized_records': len(anonymized_data),
-                'anonymized_columns': len(anonymized_data.columns),
-                'columns': list(original_data.columns)
+            "timestamp": self.timestamp.isoformat(),
+            "timestamp_formatted": self.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            "dataset_info": {
+                "original_records": len(original_data),
+                "original_columns": len(original_data.columns),
+                "anonymized_records": len(anonymized_data),
+                "anonymized_columns": len(anonymized_data.columns),
+                "columns": list(original_data.columns),
             },
-            'config_name': config.get('metadata', {}).get('name', 'Unknown') if config else 'Custom',
-            'config_description': config.get('metadata', {}).get('description', '') if config else '',
-            'use_case': config.get('metadata', {}).get('use_case', '') if config else '',
-            'scan_results': scan_results or {},
-            'validation_results': validation_results or {},
-            'utility_metrics': utility_metrics or {},
-            'privacy_guarantees': self._extract_privacy_guarantees(validation_results),
-            'legal_compliance': self._extract_legal_compliance(config, validation_results)
+            "config_name": (
+                config.get("metadata", {}).get("name", "Unknown")
+                if config
+                else "Custom"
+            ),
+            "config_description": (
+                config.get("metadata", {}).get("description", "") if config else ""
+            ),
+            "use_case": (
+                config.get("metadata", {}).get("use_case", "") if config else ""
+            ),
+            "scan_results": scan_results or {},
+            "validation_results": validation_results or {},
+            "utility_metrics": utility_metrics or {},
+            "privacy_guarantees": self._extract_privacy_guarantees(validation_results),
+            "legal_compliance": self._extract_legal_compliance(
+                config, validation_results
+            ),
         }
-        
+
         return data
-    
-    def _extract_privacy_guarantees(self, validation_results: Optional[Dict]) -> Dict[str, Any]:
+
+    def _extract_privacy_guarantees(
+        self, validation_results: Optional[Dict]
+    ) -> Dict[str, Any]:
         """Extract privacy guarantee information."""
         if not validation_results:
             return {}
-        
+
         guarantees = {
-            'overall_status': 'PASSED' if validation_results.get('passed') else 'FAILED',
-            'checks': []
+            "overall_status": (
+                "PASSED" if validation_results.get("passed") else "FAILED"
+            ),
+            "checks": [],
         }
-        
-        for check_name, check_result in validation_results.get('checks', {}).items():
+
+        for check_name, check_result in validation_results.get("checks", {}).items():
             check_info = {
-                'name': check_name.replace('_', ' ').title(),
-                'passed': check_result.get('passed', False),
-                'message': check_result.get('message', ''),
-                'details': {}
+                "name": check_name.replace("_", " ").title(),
+                "passed": check_result.get("passed", False),
+                "message": check_result.get("message", ""),
+                "details": {},
             }
-            
+
             # Add check-specific details
-            if check_name == 'k_anonymity':
-                check_info['details'] = {
-                    'Minimum k': check_result.get('min_k', 'N/A'),
-                    'Average k': f"{check_result.get('avg_k', 0):.2f}",
-                    'Required k': check_result.get('required_k', 'N/A'),
-                    'Quasi-identifiers': ', '.join(check_result.get('quasi_identifiers', []))
+            if check_name == "k_anonymity":
+                check_info["details"] = {
+                    "Minimum k": check_result.get("min_k", "N/A"),
+                    "Average k": f"{check_result.get('avg_k', 0):.2f}",
+                    "Required k": check_result.get("required_k", "N/A"),
+                    "Quasi-identifiers": ", ".join(
+                        check_result.get("quasi_identifiers", [])
+                    ),
                 }
-            elif check_name == 'l_diversity':
-                if check_result.get('min_l') is not None:
-                    check_info['details'] = {
-                        'Minimum l': check_result.get('min_l', 'N/A'),
-                        'Average l': f"{check_result.get('avg_l', 0):.2f}",
-                        'Required l': check_result.get('required_l', 'N/A'),
-                        'Sensitive attributes': ', '.join(check_result.get('sensitive_attributes', []))
+            elif check_name == "l_diversity":
+                if check_result.get("min_l") is not None:
+                    check_info["details"] = {
+                        "Minimum l": check_result.get("min_l", "N/A"),
+                        "Average l": f"{check_result.get('avg_l', 0):.2f}",
+                        "Required l": check_result.get("required_l", "N/A"),
+                        "Sensitive attributes": ", ".join(
+                            check_result.get("sensitive_attributes", [])
+                        ),
                     }
-            elif check_name == 'reidentification_risk':
-                check_info['details'] = {
-                    'High risk records': f"{check_result.get('high_risk_percent', 0):.1f}% ({check_result.get('high_risk_count', 0)} records)",
-                    'Medium risk records': f"{check_result.get('medium_risk_percent', 0):.1f}% ({check_result.get('medium_risk_count', 0)} records)",
-                    'Low risk records': f"{check_result.get('low_risk_percent', 0):.1f}% ({check_result.get('low_risk_count', 0)} records)",
-                    'Maximum acceptable': f"{check_result.get('max_risk_percent', 0)}%"
+            elif check_name == "reidentification_risk":
+                check_info["details"] = {
+                    "High risk records": f"{check_result.get('high_risk_percent', 0):.1f}% ({check_result.get('high_risk_count', 0)} records)",
+                    "Medium risk records": f"{check_result.get('medium_risk_percent', 0):.1f}% ({check_result.get('medium_risk_count', 0)} records)",
+                    "Low risk records": f"{check_result.get('low_risk_percent', 0):.1f}% ({check_result.get('low_risk_count', 0)} records)",
+                    "Maximum acceptable": f"{check_result.get('max_risk_percent', 0)}%",
                 }
-            
-            guarantees['checks'].append(check_info)
-        
+
+            guarantees["checks"].append(check_info)
+
         return guarantees
-    
-    def _extract_legal_compliance(self, config: Optional[Dict], 
-                                  validation_results: Optional[Dict]) -> Dict[str, Any]:
+
+    def _extract_legal_compliance(
+        self, config: Optional[Dict], validation_results: Optional[Dict]
+    ) -> Dict[str, Any]:
         """Extract legal compliance information."""
         compliance = {
-            'frameworks': [],
-            'status': 'COMPLIANT' if validation_results and validation_results.get('passed') else 'NON-COMPLIANT'
+            "frameworks": [],
+            "status": (
+                "COMPLIANT"
+                if validation_results and validation_results.get("passed")
+                else "NON-COMPLIANT"
+            ),
         }
-        
+
         if not config:
             return compliance
-        
-        config_name = config.get('metadata', {}).get('name', '').lower()
-        
+
+        config_name = config.get("metadata", {}).get("name", "").lower()
+
         # Determine applicable frameworks based on config
-        if 'gdpr' in config_name:
-            compliance['frameworks'].append({
-                'name': 'GDPR (General Data Protection Regulation)',
-                'articles': [
-                    'Article 25: Data protection by design and by default',
-                    'Article 32: Security of processing'
-                ],
-                'requirements': [
-                    'Pseudonymization and anonymization of personal data',
-                    'Ability to ensure ongoing confidentiality',
-                    'Appropriate technical measures'
-                ]
-            })
-        
+        if "gdpr" in config_name:
+            compliance["frameworks"].append(
+                {
+                    "name": "GDPR (General Data Protection Regulation)",
+                    "articles": [
+                        "Article 25: Data protection by design and by default",
+                        "Article 32: Security of processing",
+                    ],
+                    "requirements": [
+                        "Pseudonymization and anonymization of personal data",
+                        "Ability to ensure ongoing confidentiality",
+                        "Appropriate technical measures",
+                    ],
+                }
+            )
+
         # Add general privacy best practices
-        compliance['frameworks'].append({
-            'name': 'Privacy Best Practices',
-            'principles': [
-                'Data minimization',
-                'Purpose limitation',
-                'Storage limitation',
-                'Integrity and confidentiality'
-            ]
-        })
-        
+        compliance["frameworks"].append(
+            {
+                "name": "Privacy Best Practices",
+                "principles": [
+                    "Data minimization",
+                    "Purpose limitation",
+                    "Storage limitation",
+                    "Integrity and confidentiality",
+                ],
+            }
+        )
+
         return compliance
-    
+
     def _generate_html(self, data: Dict[str, Any]) -> str:
         """Generate HTML report."""
-        
+
         html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -355,8 +386,8 @@ class ComplianceReportGenerator:
 """
 
         # Add PII detection summary if available
-        if data['scan_results'] and 'pii_columns' in data['scan_results']:
-            pii_count = len(data['scan_results']['pii_columns'])
+        if data["scan_results"] and "pii_columns" in data["scan_results"]:
+            pii_count = len(data["scan_results"]["pii_columns"])
             html += f"""
             <div class="info-card">
                 <h3>PII Detected</h3>
@@ -364,10 +395,10 @@ class ComplianceReportGenerator:
                 <p>columns containing PII</p>
             </div>
 """
-        
+
         # Add utility metrics if available
-        if data['utility_metrics']:
-            correlation = data['utility_metrics'].get('correlation_preservation', 0)
+        if data["utility_metrics"]:
+            correlation = data["utility_metrics"].get("correlation_preservation", 0)
             html += f"""
             <div class="info-card">
                 <h3>Utility Preserved</h3>
@@ -375,29 +406,29 @@ class ComplianceReportGenerator:
                 <p>correlation preservation</p>
             </div>
 """
-        
+
         html += """
         </div>
         
         <h2>Privacy Guarantees</h2>
 """
-        
+
         # Add privacy checks
-        for check in data['privacy_guarantees'].get('checks', []):
-            status_class = 'passed' if check['passed'] else 'failed'
-            status_text = '✓ PASSED' if check['passed'] else '✗ FAILED'
-            
+        for check in data["privacy_guarantees"].get("checks", []):
+            status_class = "passed" if check["passed"] else "failed"
+            status_text = "✓ PASSED" if check["passed"] else "✗ FAILED"
+
             html += f"""
         <div class="check-item {status_class}">
             <div class="check-status {status_class}">{status_text}: {check['name']}</div>
             <p>{check['message']}</p>
 """
-            
-            if check['details']:
+
+            if check["details"]:
                 html += """
             <table class="details-table">
 """
-                for key, value in check['details'].items():
+                for key, value in check["details"].items():
                     html += f"""
                 <tr>
                     <td>{key}</td>
@@ -407,84 +438,84 @@ class ComplianceReportGenerator:
                 html += """
             </table>
 """
-            
+
             html += """
         </div>
 """
-        
+
         # Add utility metrics section if available
-        if data['utility_metrics']:
+        if data["utility_metrics"]:
             html += """
         <h2>Utility Preservation Metrics</h2>
         <p>These metrics show how much of the original data's utility has been preserved after anonymization.</p>
 """
-            
-            for metric_name, metric_value in data['utility_metrics'].items():
+
+            for metric_name, metric_value in data["utility_metrics"].items():
                 if isinstance(metric_value, (int, float)):
-                    display_name = metric_name.replace('_', ' ').title()
+                    display_name = metric_name.replace("_", " ").title()
                     if metric_value <= 1.0:
                         display_value = f"{metric_value:.1%}"
                     else:
                         display_value = f"{metric_value:.2f}"
-                    
+
                     html += f"""
         <div class="metric">
             <span class="metric-name">{display_name}</span>
             <span class="metric-value">{display_value}</span>
         </div>
 """
-        
+
         # Add legal compliance section
-        if data['legal_compliance']:
+        if data["legal_compliance"]:
             html += """
         <h2>Legal & Regulatory Compliance</h2>
 """
-            
-            for framework in data['legal_compliance'].get('frameworks', []):
+
+            for framework in data["legal_compliance"].get("frameworks", []):
                 html += f"""
         <div class="legal-section">
             <h3>{framework['name']}</h3>
 """
-                
-                if 'articles' in framework:
+
+                if "articles" in framework:
                     html += """
             <p><strong>Applicable Articles:</strong></p>
             <ul>
 """
-                    for article in framework['articles']:
+                    for article in framework["articles"]:
                         html += f"                <li>{article}</li>\n"
                     html += """
             </ul>
 """
-                
-                if 'requirements' in framework:
+
+                if "requirements" in framework:
                     html += """
             <p><strong>Requirements Met:</strong></p>
             <ul>
 """
-                    for req in framework['requirements']:
+                    for req in framework["requirements"]:
                         html += f"                <li>{req}</li>\n"
                     html += """
             </ul>
 """
-                
-                if 'principles' in framework:
+
+                if "principles" in framework:
                     html += """
             <p><strong>Principles Applied:</strong></p>
             <ul>
 """
-                    for principle in framework['principles']:
+                    for principle in framework["principles"]:
                         html += f"                <li>{principle}</li>\n"
                     html += """
             </ul>
 """
-                
+
                 html += """
         </div>
 """
-        
+
         # Add PII detection details if available
-        if data['scan_results'] and 'pii_columns' in data['scan_results']:
+        if data["scan_results"] and "pii_columns" in data["scan_results"]:
             html += """
         <h2>PII Detection Results</h2>
         <table class="details-table">
@@ -493,8 +524,10 @@ class ComplianceReportGenerator:
                 <td style="font-weight: bold;">PII Types Detected</td>
             </tr>
 """
-            for column, pii_types in data['scan_results']['pii_columns'].items():
-                pii_list = ', '.join(pii_types) if isinstance(pii_types, list) else pii_types
+            for column, pii_types in data["scan_results"]["pii_columns"].items():
+                pii_list = (
+                    ", ".join(pii_types) if isinstance(pii_types, list) else pii_types
+                )
                 html += f"""
             <tr>
                 <td>{column}</td>
@@ -504,7 +537,7 @@ class ComplianceReportGenerator:
             html += """
         </table>
 """
-        
+
         # Footer
         html += f"""
         <div class="footer">
@@ -515,12 +548,12 @@ class ComplianceReportGenerator:
 </body>
 </html>
 """
-        
+
         return html
-    
+
     def _generate_markdown(self, data: Dict[str, Any]) -> str:
         """Generate Markdown report."""
-        
+
         md = f"""# Data Anonymization Compliance Report
 
 **Generated:** {data['timestamp_formatted']}  
@@ -536,63 +569,64 @@ class ComplianceReportGenerator:
 - **Records Processed:** {data['dataset_info']['original_records']:,}
 - **Columns:** {data['dataset_info']['original_columns']}
 """
-        
-        if data['scan_results'] and 'pii_columns' in data['scan_results']:
-            pii_count = len(data['scan_results']['pii_columns'])
+
+        if data["scan_results"] and "pii_columns" in data["scan_results"]:
+            pii_count = len(data["scan_results"]["pii_columns"])
             md += f"- **PII Columns Detected:** {pii_count}\n"
-        
-        if data['utility_metrics']:
-            correlation = data['utility_metrics'].get('correlation_preservation', 0)
+
+        if data["utility_metrics"]:
+            correlation = data["utility_metrics"].get("correlation_preservation", 0)
             md += f"- **Utility Preserved:** {correlation:.1%}\n"
-        
+
         md += "\n## Privacy Guarantees\n\n"
-        
-        for check in data['privacy_guarantees'].get('checks', []):
-            status = '✓ PASSED' if check['passed'] else '✗ FAILED'
+
+        for check in data["privacy_guarantees"].get("checks", []):
+            status = "✓ PASSED" if check["passed"] else "✗ FAILED"
             md += f"### {status}: {check['name']}\n\n"
             md += f"{check['message']}\n\n"
-            
-            if check['details']:
+
+            if check["details"]:
                 md += "**Details:**\n\n"
-                for key, value in check['details'].items():
+                for key, value in check["details"].items():
                     md += f"- **{key}:** {value}\n"
                 md += "\n"
-        
-        if data['utility_metrics']:
+
+        if data["utility_metrics"]:
             md += "## Utility Preservation Metrics\n\n"
-            for metric_name, metric_value in data['utility_metrics'].items():
+            for metric_name, metric_value in data["utility_metrics"].items():
                 if isinstance(metric_value, (int, float)):
-                    display_name = metric_name.replace('_', ' ').title()
+                    display_name = metric_name.replace("_", " ").title()
                     if metric_value <= 1.0:
                         display_value = f"{metric_value:.1%}"
                     else:
                         display_value = f"{metric_value:.2f}"
                     md += f"- **{display_name}:** {display_value}\n"
             md += "\n"
-        
-        if data['legal_compliance']:
+
+        if data["legal_compliance"]:
             md += "## Legal & Regulatory Compliance\n\n"
-            for framework in data['legal_compliance'].get('frameworks', []):
+            for framework in data["legal_compliance"].get("frameworks", []):
                 md += f"### {framework['name']}\n\n"
-                
-                if 'articles' in framework:
+
+                if "articles" in framework:
                     md += "**Applicable Articles:**\n\n"
-                    for article in framework['articles']:
+                    for article in framework["articles"]:
                         md += f"- {article}\n"
                     md += "\n"
-                
-                if 'requirements' in framework:
+
+                if "requirements" in framework:
                     md += "**Requirements Met:**\n\n"
-                    for req in framework['requirements']:
+                    for req in framework["requirements"]:
                         md += f"- {req}\n"
                     md += "\n"
-        
+
         md += f"\n---\n\n*Report generated: {data['timestamp_formatted']}*\n"
-        
+
         return md
-    
+
     def _generate_json(self, data: Dict[str, Any]) -> str:
         """Generate JSON report."""
+
         # Convert numpy types to native Python types for JSON serialization
         def convert_types(obj):
             if isinstance(obj, np.integer):
@@ -606,48 +640,52 @@ class ComplianceReportGenerator:
             elif isinstance(obj, list):
                 return [convert_types(item) for item in obj]
             return obj
-        
+
         data = convert_types(data)
         return json.dumps(data, indent=2)
 
 
 if __name__ == "__main__":
     # Example usage
-    
+
     # Sample data
-    original_df = pd.DataFrame({
-        'name': ['John', 'Jane', 'Bob'],
-        'age': [25, 30, 35],
-        'income': [50000, 60000, 70000]
-    })
-    
-    anonymized_df = pd.DataFrame({
-        'name': ['Person_1', 'Person_2', 'Person_3'],
-        'age': [25, 30, 35],
-        'income': [50000, 60000, 70000]
-    })
-    
+    original_df = pd.DataFrame(
+        {
+            "name": ["John", "Jane", "Bob"],
+            "age": [25, 30, 35],
+            "income": [50000, 60000, 70000],
+        }
+    )
+
+    anonymized_df = pd.DataFrame(
+        {
+            "name": ["Person_1", "Person_2", "Person_3"],
+            "age": [25, 30, 35],
+            "income": [50000, 60000, 70000],
+        }
+    )
+
     # Sample results
     validation_results = {
-        'passed': True,
-        'checks': {
-            'k_anonymity': {
-                'passed': True,
-                'message': 'k-anonymity 5 meets threshold 5',
-                'min_k': 5,
-                'avg_k': 6.2,
-                'required_k': 5,
-                'quasi_identifiers': ['age', 'zipcode']
+        "passed": True,
+        "checks": {
+            "k_anonymity": {
+                "passed": True,
+                "message": "k-anonymity 5 meets threshold 5",
+                "min_k": 5,
+                "avg_k": 6.2,
+                "required_k": 5,
+                "quasi_identifiers": ["age", "zipcode"],
             }
-        }
+        },
     }
-    
+
     utility_metrics = {
-        'correlation_preservation': 0.92,
-        'distribution_similarity': 0.88,
-        'information_retention': 0.85
+        "correlation_preservation": 0.92,
+        "distribution_similarity": 0.88,
+        "information_retention": 0.85,
     }
-    
+
     # Generate report
     generator = ComplianceReportGenerator()
     report = generator.generate(
@@ -655,11 +693,11 @@ if __name__ == "__main__":
         anonymized_data=anonymized_df,
         validation_results=validation_results,
         utility_metrics=utility_metrics,
-        output_format='html'
+        output_format="html",
     )
-    
+
     # Save report
-    with open('sample_report.html', 'w') as f:
+    with open("sample_report.html", "w") as f:
         f.write(report)
-    
+
     print("Sample report generated: sample_report.html")

@@ -10,13 +10,13 @@ from src.anonymizers.techniques import (
     RedactionTechnique,
     GeneralizationTechnique,
     PseudonymizationTechnique,
-    AnonymizationTechniques
+    AnonymizationTechniques,
 )
 
 __all__ = [
-    'HashingTechnique',
-    'RedactionTechnique',
-    'GeneralizationTechnique',
-    'PseudonymizationTechnique',
-    'AnonymizationTechniques',
+    "HashingTechnique",
+    "RedactionTechnique",
+    "GeneralizationTechnique",
+    "PseudonymizationTechnique",
+    "AnonymizationTechniques",
 ]

@@ -3,7 +3,7 @@ import json
 import random
 from datetime import datetime, timedelta
 
-fake = Faker('en_US')
+fake = Faker("en_US")
 Faker.seed(42)
 
 # Templates for support messages with embedded PII
@@ -31,40 +31,40 @@ tickets = []
 for i in range(500):
     # Random customer_id between 1 and 1000 (assuming 1000 customers)
     customer_id = random.randint(1, 1000)
-    
+
     # Generate PII data
     pii_data = {
-        'name': fake.name(),
-        'email': fake.email(),
-        'phone': fake.phone_number(),
-        'ssn': fake.ssn(),
-        'address': fake.street_address(),
-        'city': fake.city(),
-        'state': fake.state_abbr(),
-        'zip': fake.zipcode(),
-        'dob': fake.date_of_birth(minimum_age=18, maximum_age=90).strftime('%Y-%m-%d'),
-        'income': fake.random_int(min=20000, max=250000)
+        "name": fake.name(),
+        "email": fake.email(),
+        "phone": fake.phone_number(),
+        "ssn": fake.ssn(),
+        "address": fake.street_address(),
+        "city": fake.city(),
+        "state": fake.state_abbr(),
+        "zip": fake.zipcode(),
+        "dob": fake.date_of_birth(minimum_age=18, maximum_age=90).strftime("%Y-%m-%d"),
+        "income": fake.random_int(min=20000, max=250000),
     }
-    
+
     # Create message with embedded PII
     template = random.choice(message_templates)
     message = template.format(**pii_data)
-    
+
     # Generate timestamp within last 365 days
     days_ago = random.randint(0, 365)
-    timestamp = (datetime.now() - timedelta(days=days_ago, 
-                                            hours=random.randint(0, 23),
-                                            minutes=random.randint(0, 59))).isoformat()
-    
-    tickets.append({
-        'customer_id': customer_id,
-        'message': message,
-        'timestamp': timestamp
-    })
+    timestamp = (
+        datetime.now()
+        - timedelta(
+            days=days_ago, hours=random.randint(0, 23), minutes=random.randint(0, 59)
+        )
+    ).isoformat()
+
+    tickets.append(
+        {"customer_id": customer_id, "message": message, "timestamp": timestamp}
+    )
 
 # Write to JSON file
-with open('fixtures/support_tickets.json', 'w', encoding='utf-8') as f:
+with open("fixtures/support_tickets.json", "w", encoding="utf-8") as f:
     json.dump(tickets, f, indent=2)
 
-print(f'Generated {len(tickets)} support ticket records')
-
+print(f"Generated {len(tickets)} support ticket records")

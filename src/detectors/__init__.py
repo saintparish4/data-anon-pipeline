@@ -8,8 +8,8 @@ from src.detectors.regex_detector import RegexDetector, PIIMatch
 from src.detectors.ner_detector import NERDetector, NERMatch
 
 __all__ = [
-    'RegexDetector',
-    'PIIMatch',
-    'NERDetector',
-    'NERMatch',
+    "RegexDetector",
+    "PIIMatch",
+    "NERDetector",
+    "NERMatch",
 ]
