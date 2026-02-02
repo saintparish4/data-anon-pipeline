@@ -1,5 +1,11 @@
 # Data Anonymization Rules Configuration
-# Defines how each PII type should be anonymized
+# Defines how each PII type should be anonymized.
+#
+# To use different rule sets per business/use case (e.g. ML metrics vs full privacy),
+# use a preset or custom config at runtime instead of this file:
+#   CLI:  --preset ml_training   or  --preset gdpr_compliant  or  --config path/to.yaml
+#   Code: load_config(Path("config/presets/ml_training.yaml"))
+# Presets: config/presets/ (ml_training, gdpr_compliant, vendor_sharing)
 
 version: "1.0"
 description: "Default Anonymization rules for common PII types"
@@ -56,7 +62,7 @@ rules:
     strategy: generalize
     parameters:
       bin_size: 10  # 10-year ranges (e.g., 30-39)
-      min_value: 0
+      min_value: 18
       max_value: 100
   
   date_of_birth:
@@ -64,10 +70,32 @@ rules:
     parameters:
       granularity: year  # Options: day, week, month, quarter, year
   
+  dob:  # Alias for date_of_birth
+    strategy: generalize
+    parameters:
+      granularity: year
+  
+  # Marital status - sensitive attribute that can enable re-identification
+  marital_status:
+    strategy: generalize
+    parameters:
+      categories:
+        - "Single"           # Never married
+        - "Married/Partnered"  # Groups Married + Domestic Partnership
+        - "Previously Married"  # Groups Divorced + Separated + Widowed
+      rare_threshold: 5  # Generalize rare statuses for k-anonymity
+      mapping:
+        "Single": "Single"
+        "Married": "Married/Partnered"
+        "Domestic Partnership": "Married/Partnered"
+        "Divorced": "Previously Married"
+        "Separated": "Previously Married"
+        "Widowed": "Previously Married"
+  
   income:
     strategy: generalize
     parameters:
-      bin_size: 10000  # $10k ranges
+      bin_size: 25000  # $25k ranges for better k-anonymity
       min_value: 0
       max_value: 500000
   
@@ -94,6 +122,74 @@ rules:
     parameters:
       salt: true
       algorithm: sha256
+  
+  # Gender - generalize to preserve utility while protecting rare categories
+  gender:
+    strategy: generalize
+    parameters:
+      categories:
+        - "Male"
+        - "Female"
+        - "Other"  # Groups Non-binary, Prefer not to say for k-anonymity
+      rare_threshold: 5  # Generalize if fewer than 5 records
+  
+  # Race - highly sensitive, requires careful generalization for k-anonymity
+  race:
+    strategy: generalize
+    parameters:
+      categories:
+        - "White"
+        - "Black or African American"
+        - "Asian"
+        - "Other"  # Groups smaller categories to prevent re-identification
+      rare_threshold: 10  # Higher threshold for this sensitive attribute
+      mapping:
+        "White": "White"
+        "Black or African American": "Black or African American"
+        "Asian": "Asian"
+        "American Indian or Alaska Native": "Other"
+        "Native Hawaiian or Pacific Islander": "Other"
+        "Two or More Races": "Other"
+  
+  # Ethnicity - sensitive attribute, separate from race per US Census
+  ethnicity:
+    strategy: generalize
+    parameters:
+      categories:
+        - "Not Hispanic or Latino"
+        - "Hispanic or Latino"  # Consolidate all Hispanic subcategories
+      rare_threshold: 10
+      mapping:
+        "Not Hispanic or Latino": "Not Hispanic or Latino"
+        "Hispanic or Latino - Mexican": "Hispanic or Latino"
+        "Hispanic or Latino - Puerto Rican": "Hispanic or Latino"
+        "Hispanic or Latino - Cuban": "Hispanic or Latino"
+        "Hispanic or Latino - Other": "Hispanic or Latino"
+  
+  # Location History - contains sensitive travel data
+  location_history:
+    strategy: generalize
+    parameters:
+      level: country  # Options: exact, city, country, region
+      remove_coordinates: true  # Strip lat/lng
+      remove_dates: false  # Keep dates for temporal analysis
+      max_locations: 5  # Limit number of locations shown
+  
+  # Device/OS Data
+  os_name:
+    strategy: generalize
+    parameters:
+      level: family  # Options: exact, family (Windows/macOS/iOS/Android/Linux)
+  
+  os_version:
+    strategy: redact_full
+    parameters:
+      replacement: "[VERSION]"  # Version numbers can fingerprint users
+  
+  device_type:
+    strategy: preserve  # Low sensitivity - desktop/mobile/tablet
+    parameters:
+      allowed_values: ["desktop", "mobile", "tablet"]
 
 # Global settings
 global:

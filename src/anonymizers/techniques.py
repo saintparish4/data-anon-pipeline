@@ -358,6 +358,97 @@ class GeneralizationTechnique:
         return str(date_obj.year)
 
     @staticmethod
+    def generalize_dob_to_generation(
+        date: Union[str, datetime], include_label: bool = True
+    ) -> str:
+        """
+        Generalize date of birth to generation cohort.
+
+        Generation cohorts:
+        - Baby Boomers: 1946-1964
+        - Gen X: 1965-1980
+        - Millennials: 1981-1996
+        - Gen Z: 1997-2012
+        - Gen Alpha: 2013-2025
+
+        Example: "1990-05-15" → "1981-1996 (Millennial)"
+
+        Args:
+            date: Date of birth to generalize
+            include_label: Whether to include generation name (default: True)
+
+        Returns:
+            Generation cohort string
+        """
+        # Define generation cohorts
+        GENERATIONS = [
+            (1946, 1964, "Baby Boomer"),
+            (1965, 1980, "Gen X"),
+            (1981, 1996, "Millennial"),
+            (1997, 2012, "Gen Z"),
+            (2013, 2025, "Gen Alpha"),
+        ]
+
+        # Parse date to get birth year
+        if isinstance(date, str):
+            try:
+                date_obj = datetime.fromisoformat(date.split()[0])
+            except ValueError:
+                for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"]:
+                    try:
+                        date_obj = datetime.strptime(date, fmt)
+                        break
+                    except ValueError:
+                        continue
+                else:
+                    return date  # Return original if can't parse
+        else:
+            date_obj = date
+
+        birth_year = date_obj.year
+
+        # Find matching generation
+        for start_year, end_year, label in GENERATIONS:
+            if start_year <= birth_year <= end_year:
+                if include_label:
+                    return f"{start_year}-{end_year} ({label})"
+                else:
+                    return f"{start_year}-{end_year}"
+
+        # Handle years outside defined generations
+        if birth_year < 1946:
+            if include_label:
+                return "Pre-1946 (Silent Gen)"
+            return "Pre-1946"
+        else:
+            if include_label:
+                return f"Post-2025 (Gen Beta)"
+            return "Post-2025"
+
+    @staticmethod
+    def generalize_income_range(income: float, bracket_size: int = 25000) -> str:
+        """
+        Generalize income into readable ranges.
+
+        Example: 85000 → "$75k-$100k"
+
+        Args:
+            income: Income to generalize
+            bracket_size: Size of income bracket (default: $25,000)
+
+        Returns:
+            Income range as string (e.g., "$75k-$100k")
+        """
+        lower_bound = (int(income) // bracket_size) * bracket_size
+        upper_bound = lower_bound + bracket_size
+
+        # Format as "k" for thousands
+        lower_k = lower_bound // 1000
+        upper_k = upper_bound // 1000
+
+        return f"${lower_k}k-${upper_k}k"
+
+    @staticmethod
     def generalize_income(income: float, bracket_size: int = 10000) -> str:
         """
         Generalize income into brackets.
@@ -590,6 +681,16 @@ class AnonymizationTechniques:
     def generalize_date_to_quarter(self, date: Union[str, datetime]) -> str:
         """Generalize date to quarter."""
         return self.generalization.generalize_date_to_quarter(date)
+
+    def generalize_dob_to_generation(
+        self, date: Union[str, datetime], include_label: bool = True
+    ) -> str:
+        """Generalize date of birth to generation cohort."""
+        return self.generalization.generalize_dob_to_generation(date, include_label)
+
+    def generalize_income_range(self, income: float, bracket_size: int = 25000) -> str:
+        """Generalize income to readable ranges (e.g., $75k-$100k)."""
+        return self.generalization.generalize_income_range(income, bracket_size)
 
     def pseudonymize_name(self, name: str) -> str:
         """Generate consistent fake name."""

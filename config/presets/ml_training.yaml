@@ -66,8 +66,14 @@ anonymization_rules:
   date_of_birth:
     technique: "generalize"
     params:
-      method: "year_only"
-      format: "year"  # Keep exact year (not decade)
+      method: "generation_cohort"
+      include_label: false  # Output: "1981-1996" (no label for ML features)
+  
+  dob:
+    technique: "generalize"
+    params:
+      method: "generation_cohort"
+      include_label: false
   
   zipcode:
     technique: "generalize"
@@ -117,33 +123,18 @@ anonymization_rules:
       format: "midpoint"
       preserve_outliers: true
   
-  # Behavioral/transactional data - preserve precision
-  purchase_amount:
-    technique: "add_noise"
-    params:
-      method: "laplacian"
-      epsilon: 1.0  # Differential privacy parameter
-      sensitivity: 100
-  
-  transaction_count:
-    technique: "add_noise"
-    params:
-      method: "laplacian"
-      epsilon: 1.0
-      sensitivity: 5
-  
   # Timestamps - preserve more precision than GDPR
   timestamp:
     technique: "generalize"
     params:
       method: "round"
-      precision: "day"  # Day-level precision (hour not supported)
+      granularity: "day"  # Day-level precision (hour not supported)
   
   datetime:
     technique: "generalize"
     params:
       method: "round"
-      precision: "day"
+      granularity: "day"
   
   # Categorical features - preserve as-is (no PII)
   category:

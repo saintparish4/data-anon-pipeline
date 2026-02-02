@@ -11,7 +11,7 @@ This script demonstrates the complete workflow in under 60 seconds:
 
 Usage:
     python examples/demo.py
-    python examples/demo.py --dataset fixtures/transactions.csv
+    python examples/demo.py --dataset fixtures/customers.csv
     python examples/demo.py --preset ml_training --output demo_output.csv
 """
 

@@ -60,8 +60,16 @@ anonymization_rules:
   date_of_birth:
     technique: "generalize"
     params:
-      method: "year_only"
-      format: "decade"  # Output: "1980s"
+      method: "generation_cohort"
+      include_label: true  # Output: "1981-1996 (Millennial)"
+      # Cohorts: Baby Boomer (1946-1964), Gen X (1965-1980), 
+      #          Millennial (1981-1996), Gen Z (1997-2012), Gen Alpha (2013-2025)
+  
+  dob:
+    technique: "generalize"
+    params:
+      method: "generation_cohort"
+      include_label: true
   
   zipcode:
     technique: "generalize"
@@ -90,29 +98,29 @@ anonymization_rules:
   income:
     technique: "generalize"
     params:
-      method: "bins"
+      method: "income_range"
       bin_size: 25000
-      format: "range"  # Output: "50000-74999"
+      format: "readable"  # Output: "$75k-$100k"
   
   salary:
     technique: "generalize"
     params:
-      method: "bins"
+      method: "income_range"
       bin_size: 25000
-      format: "range"
+      format: "readable"  # Output: "$75k-$100k"
   
   # Timestamps - generalize to reduce precision
   timestamp:
     technique: "generalize"
     params:
       method: "round"
-      precision: "day"  # Remove time component
+      granularity: "day"  # Remove time component
   
   datetime:
     technique: "generalize"
     params:
       method: "round"
-      precision: "day"
+      granularity: "day"
 
 # Privacy validation thresholds
 privacy_thresholds:

@@ -80,6 +80,7 @@ def sample_customer_data():
         "income": np.random.randint(30000, 150000, n_records),
         "city": np.random.choice(["New York", "Los Angeles", "Chicago"], n_records),
         "state": np.random.choice(["NY", "CA", "IL"], n_records),
+        "date_of_birth": [fake.date_of_birth(minimum_age=18, maximum_age=80) for _ in range(n_records)],
     }
 
     return pd.DataFrame(data)

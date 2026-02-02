@@ -62,8 +62,14 @@ anonymization_rules:
   date_of_birth:
     technique: "generalize"
     params:
-      method: "year_only"
-      format: "quarter"  # Output: quarter-level granularity
+      method: "generation_cohort"
+      include_label: true  # Output: "1981-1996 (Millennial)"
+  
+  dob:
+    technique: "generalize"
+    params:
+      method: "generation_cohort"
+      include_label: true
   
   zipcode:
     technique: "generalize"
@@ -92,50 +98,29 @@ anonymization_rules:
   income:
     technique: "generalize"
     params:
-      method: "bins"
-      bin_size: 15000
-      format: "range"  # "45000-59999"
+      method: "income_range"
+      bin_size: 25000
+      format: "readable"  # Output: "$75k-$100k"
   
   salary:
     technique: "generalize"
     params:
-      method: "bins"
-      bin_size: 15000
-      format: "range"
-  
-  # Business metrics - preserve with light anonymization
-  purchase_amount:
-    technique: "generalize"
-    params:
-      method: "round"
-      round_to: 10  # Round to nearest $10
-      preserve_zero: true
-  
-  transaction_count:
-    technique: "preserve"
-    params:
-      cap_outliers: true  # Cap extreme values
-      outlier_threshold: 3  # 3 standard deviations
-  
-  lifetime_value:
-    technique: "generalize"
-    params:
-      method: "bins"
-      bin_size: 500
-      format: "midpoint"
+      method: "income_range"
+      bin_size: 25000
+      format: "readable"
   
   # Timestamps - reasonable precision
   timestamp:
     technique: "generalize"
     params:
       method: "round"
-      precision: "day"  # Day precision (hour not supported)
+      granularity: "day"  # Day precision (hour not supported)
   
   datetime:
     technique: "generalize"
     params:
       method: "round"
-      precision: "day"
+      granularity: "day"
   
   # User behavior - preserve patterns
   session_duration:
@@ -183,8 +168,9 @@ privacy_thresholds:
     minimum_l: 2
     sensitive_attributes:
       - income
-      - purchase_amount
-      - lifetime_value
+      - marital_status
+      - race
+      - ethnicity
   
   reidentification_risk:
     enabled: true

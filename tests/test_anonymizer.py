@@ -419,8 +419,9 @@ class TestDataTypePreservation:
         anonymizer = Anonymizer(config)
         result = anonymizer.anonymize(df)
 
-        # Generalization returns string ranges, so type changes
-        assert result["age"].dtype == object
+        # Generalization returns string ranges, so type changes to string dtype
+        # Check if dtype is object or any string-based dtype
+        assert result["age"].dtype == object or "str" in str(result["age"].dtype).lower()
 
 
 class TestEdgeCases:

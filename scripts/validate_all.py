@@ -224,8 +224,6 @@ class ValidationTester:
 
         expected_fixtures = [
             "customers.csv",
-            "support_tickets.json",
-            "transactions.csv",
         ]
 
         all_passed = True

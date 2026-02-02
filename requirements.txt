@@ -1,11 +1,14 @@
-pandas>=2.0.0
-pytest>=7.4.0
-pytest-xdist>=3.0.0
+pandas>=3.0.0
+pytest>=9.0.2
+pytest-xdist>=3.8.0
 PyYAML==6.0.3
-faker>=18.0.0
-scipy>=1.10.0
-spacy>=3.4.0
-rich>=13.0.0
-black>=25.12.0
+faker>=40.1.2
+scipy>=1.17.0
+spacy>=3.8.11
+rich>=14.3.1
+black>=26.1.0
 black[jupyter]>=25.12.0
+en-core-web-sm>=3.8.0 
 
+# Demo recording
+asciinema>=2.4.0

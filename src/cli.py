@@ -269,6 +269,22 @@ Examples:
                     else:
                         return {"granularity": "year"}
 
+                elif method == "generation_cohort":
+                    # Generation cohort is a valid generalize method for dates
+                    return {"granularity": "year", "method": "generation_cohort"}
+
+                elif method == "income_range":
+                    # Income range uses bin_size
+                    result = {
+                        k: v
+                        for k, v in params.items()
+                        if k in ["bin_size", "format"]
+                    }
+                    if "bin_size" in result:
+                        result["min_value"] = 0
+                        result["max_value"] = 10000000
+                    return result
+
                 elif method == "bins":
                     result = {
                         k: v
